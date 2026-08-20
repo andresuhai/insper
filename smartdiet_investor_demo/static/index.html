@@ -1,0 +1,1579 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+    <title>SmartDiet | Plataforma Integrada de Nutrição & Varejo</title>
+    <meta name="description" content="SmartDiet: Plataforma Multilateral que conecta Nutrição Clínica, Consumidores e Estoques de Varejo em Tempo Real.">
+
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/vue@3/dist/vue.global.prod.js"></script>
+
+    <style>
+        :root {
+            --green: #16C47F;
+            --green-dim: rgba(22, 196, 127, 0.15);
+            --green-glow: rgba(22, 196, 127, 0.4);
+            --blue: #38BDF8;
+            --blue-dim: rgba(56, 189, 248, 0.12);
+            --orange: #FB923C;
+            --orange-dim: rgba(251, 146, 60, 0.15);
+            --yellow: #FACC15;
+            --purple: #A78BFA;
+            --purple-dim: rgba(167, 139, 250, 0.15);
+            --red: #F87171;
+
+            --bg: #060B14;
+            --bg2: #0C1524;
+            --surface: rgba(14, 27, 50, 0.92);
+            --surface2: rgba(20, 38, 68, 0.7);
+            --border: rgba(255, 255, 255, 0.08);
+            --border2: rgba(255, 255, 255, 0.15);
+
+            --text: #F0F9FF;
+            --text-muted: #94A3B8;
+            --text-dim: #475569;
+
+            --radius-sm: 8px;
+            --radius-md: 14px;
+            --radius-xl: 20px;
+            --radius-2xl: 28px;
+        }
+
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        html, body { height: 100%; width: 100%; font-family: 'Inter', sans-serif; background: var(--bg); color: var(--text); overflow: hidden; }
+
+        ::-webkit-scrollbar { width: 5px; height: 5px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #1e3a5f; border-radius: 4px; }
+
+        .bg-mesh {
+            background-color: var(--bg);
+            background-image:
+                radial-gradient(ellipse at 0% 0%, rgba(22, 196, 127, 0.12) 0, transparent 50%),
+                radial-gradient(ellipse at 100% 0%, rgba(56, 189, 248, 0.10) 0, transparent 50%),
+                radial-gradient(ellipse at 100% 100%, rgba(167, 139, 250, 0.08) 0, transparent 50%),
+                radial-gradient(ellipse at 0% 100%, rgba(251, 146, 60, 0.08) 0, transparent 50%);
+        }
+
+        .glass { background: var(--surface); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); border: 1px solid var(--border); }
+        .glass-light { background: var(--surface2); backdrop-filter: blur(10px); border: 1px solid var(--border2); }
+        .glow-green { box-shadow: 0 0 30px var(--green-glow); }
+        .glow-purple { box-shadow: 0 0 30px rgba(167, 139, 250, 0.3); }
+
+        .text-gradient {
+            background: linear-gradient(135deg, var(--green) 0%, var(--blue) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        .text-gradient-purple {
+            background: linear-gradient(135deg, var(--purple) 0%, var(--blue) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        @keyframes fadeSlideUp { from { opacity: 0; transform: translateY(18px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        @keyframes float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }
+        @keyframes pulse-glow { 0% { box-shadow: 0 0 0 0 rgba(22, 196, 127, 0.4); } 70% { box-shadow: 0 0 0 10px transparent; } 100% { box-shadow: 0 0 0 0 transparent; } }
+
+        .anim-up { animation: fadeSlideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+        .anim-float { animation: float 3s ease-in-out infinite; }
+
+        .fade-enter-active, .fade-leave-active { transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1); }
+        .fade-enter-from { opacity: 0; transform: translateY(12px); }
+        .fade-leave-to { opacity: 0; transform: translateY(-12px); }
+
+        #app { display: flex; height: 100%; width: 100%; position: relative; }
+
+        /* BOOT LOADER */
+        #boot-loader { position: fixed; inset: 0; background: #060B14; display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 9999; gap: 20px; transition: opacity 0.4s ease; }
+        #boot-loader.hidden { opacity: 0; pointer-events: none; }
+        .boot-logo { font-size: 1.8rem; font-weight: 900; color: #16C47F; display: flex; align-items: center; gap: 10px; }
+        .boot-spinner { width: 36px; height: 36px; border: 3px solid rgba(22, 196, 127, 0.2); border-top-color: #16C47F; border-radius: 50%; animation: spin 0.8s linear infinite; }
+
+        /* LOGIN */
+        .login-wrap { position: absolute; inset: 0; display: flex; z-index: 50; }
+        .login-hero { flex: 0 0 54%; position: relative; overflow: hidden; display: flex; flex-direction: column; justify-content: flex-end; padding: 56px; }
+        .login-hero-img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: 0.45; }
+        .login-hero-overlay { position: absolute; inset: 0; background: linear-gradient(to top, var(--bg) 0%, rgba(6, 11, 20, 0.6) 50%, transparent 100%); }
+        .login-hero-content { position: relative; z-index: 2; }
+        .login-hero h1 { font-size: 3.2rem; font-weight: 900; line-height: 1.1; margin: 16px 0; }
+        .login-hero p { font-size: 1.05rem; color: var(--text-muted); max-width: 480px; }
+
+        .floating-card { position: absolute; padding: 12px 16px; border-radius: 16px; font-weight: 700; font-size: 0.8rem; display: flex; align-items: center; gap: 10px; }
+        .fc1 { top: 12%; right: 8%; }
+        .fc2 { top: 35%; right: 5%; }
+        .fc3 { top: 58%; right: 9%; }
+
+        .login-form-wrap { flex: 1; background: var(--bg2); display: flex; flex-direction: column; justify-content: center; padding: 40px 56px; border-left: 1px solid var(--border); overflow-y: auto; }
+        .login-logo { display: flex; align-items: center; gap: 10px; font-size: 1.6rem; font-weight: 900; color: var(--green); margin-bottom: 28px; }
+
+        .form-label { display: block; font-size: 0.75rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 6px; }
+        .form-input {
+            width: 100%; background: rgba(255, 255, 255, 0.04); border: 1px solid var(--border2);
+            border-radius: 12px; padding: 12px 14px; color: var(--text); font-size: 0.9rem;
+            font-family: inherit; transition: border-color 0.2s, box-shadow 0.2s; outline: none;
+        }
+        .form-input:focus { border-color: var(--green); box-shadow: 0 0 0 3px var(--green-dim); }
+        .form-input::placeholder { color: var(--text-dim); }
+
+        .btn-primary {
+            width: 100%; padding: 13px; border-radius: 12px; border: none; cursor: pointer;
+            background: linear-gradient(135deg, #12a96c, var(--green));
+            color: white; font-weight: 800; font-size: 0.95rem; font-family: inherit;
+            box-shadow: 0 4px 20px var(--green-glow); transition: transform 0.15s, box-shadow 0.15s;
+            display: flex; align-items: center; justify-content: center; gap: 8px;
+        }
+        .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 8px 25px var(--green-glow); }
+        .btn-purple {
+            background: linear-gradient(135deg, #8b5cf6, #a78bfa);
+            box-shadow: 0 4px 20px rgba(167, 139, 250, 0.35);
+        }
+        .btn-purple:hover { box-shadow: 0 8px 25px rgba(167, 139, 250, 0.5); }
+
+        .quick-btn {
+            padding: 10px 12px; border-radius: 12px; border: 1px solid var(--border2);
+            background: rgba(255, 255, 255, 0.04); color: var(--text); font-weight: 700;
+            font-size: 0.78rem; cursor: pointer; font-family: inherit;
+            transition: all 0.2s; display: flex; flex-direction: column; gap: 4px; text-align: left;
+        }
+        .quick-btn:hover { background: rgba(255, 255, 255, 0.09); border-color: var(--green); transform: translateY(-2px); }
+
+        /* SIDEBAR */
+        .sidebar {
+            width: 270px; flex-shrink: 0; background: var(--surface);
+            border-right: 1px solid var(--border); display: flex; flex-direction: column;
+            backdrop-filter: blur(20px); z-index: 20;
+        }
+        .sidebar-logo { padding: 24px 20px 16px; font-size: 1.25rem; font-weight: 900; color: var(--green); display: flex; align-items: center; gap: 10px; }
+        .sidebar-section { padding: 0 12px 6px; }
+        .sidebar-label { padding: 12px 10px 6px; font-size: 0.65rem; font-weight: 800; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.12em; }
+
+        .nav-btn {
+            width: 100%; display: flex; align-items: center; gap: 10px;
+            padding: 10px 12px; border-radius: 12px; border: 1px solid transparent; cursor: pointer;
+            font-family: inherit; font-size: 0.85rem; font-weight: 600;
+            color: var(--text-muted); background: transparent; transition: all 0.2s; text-align: left; position: relative;
+        }
+        .nav-btn:hover { background: rgba(255, 255, 255, 0.06); color: var(--text); }
+        .nav-btn.active-green { background: var(--green-dim); color: var(--green); border-color: rgba(22, 196, 127, 0.25); }
+        .nav-btn.active-blue { background: var(--blue-dim); color: var(--blue); border-color: rgba(56, 189, 248, 0.25); }
+        .nav-btn.active-purple { background: var(--purple-dim); color: var(--purple); border-color: rgba(167, 139, 250, 0.25); }
+        .nav-btn .nav-icon { width: 30px; height: 30px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 0.85rem; flex-shrink: 0; background: rgba(255, 255, 255, 0.05); }
+        .nav-badge { position: absolute; right: 10px; top: 50%; transform: translateY(-50%); background: var(--green); color: white; font-size: 0.65rem; font-weight: 800; width: 18px; height: 18px; border-radius: 50%; display: flex; align-items: center; justify-content: center; }
+
+        .sidebar-footer { margin-top: auto; padding: 14px; border-top: 1px solid var(--border); }
+        .user-card { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 12px; background: rgba(255, 255, 255, 0.04); }
+        .user-avatar { width: 38px; height: 38px; border-radius: 50%; object-fit: cover; border: 2px solid var(--green); }
+        .logout-btn { margin-left: auto; width: 32px; height: 32px; border-radius: 8px; border: 1px solid var(--border2); background: transparent; color: var(--text-muted); cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 0.8rem; transition: all 0.2s; }
+        .logout-btn:hover { color: var(--red); background: rgba(248, 113, 113, 0.15); }
+
+        /* MAIN CONTENT */
+        .main-content { flex: 1; overflow-y: auto; padding: 32px 40px; position: relative; }
+        .page-header { margin-bottom: 24px; display: flex; align-items: flex-end; justify-content: space-between; flex-wrap: wrap; gap: 14px; }
+        .page-title { font-size: 1.85rem; font-weight: 900; line-height: 1.2; }
+        .page-subtitle { color: var(--text-muted); font-size: 0.85rem; margin-top: 4px; }
+
+        .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-xl); }
+        .stat-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-xl); padding: 18px; display: flex; flex-direction: column; gap: 10px; }
+        .stat-icon { width: 40px; height: 40px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 1rem; }
+
+        /* MACROS & RINGS */
+        .ring-container { position: relative; width: 150px; height: 150px; flex-shrink: 0; }
+        .ring-container svg { transform: rotate(-90deg); }
+        .ring-bg { fill: none; stroke: rgba(255, 255, 255, 0.06); stroke-width: 10; }
+        .ring-fill { fill: none; stroke-width: 10; stroke-linecap: round; transition: stroke-dashoffset 1s cubic-bezier(0.4, 0, 0.2, 1); }
+        .ring-center { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+
+        .macro-bar-wrap { margin-bottom: 10px; }
+        .macro-bar-header { display: flex; justify-content: space-between; margin-bottom: 4px; font-size: 0.78rem; font-weight: 600; }
+        .macro-bar-track { height: 7px; border-radius: 6px; background: rgba(255, 255, 255, 0.06); overflow: hidden; }
+        .macro-bar-fill { height: 100%; border-radius: 6px; transition: width 0.8s ease; }
+
+        /* MEALS */
+        .meal-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-xl); overflow: hidden; transition: all 0.2s; }
+        .meal-card.checked { border-color: rgba(22, 196, 127, 0.35); background: rgba(22, 196, 127, 0.04); }
+        .meal-card-img { width: 110px; height: 100%; object-fit: cover; flex-shrink: 0; }
+        .meal-check-btn {
+            width: 26px; height: 26px; border-radius: 8px; flex-shrink: 0;
+            border: 2px solid var(--border2); background: transparent; cursor: pointer;
+            display: flex; align-items: center; justify-content: center; font-size: 0.75rem; color: var(--green); transition: all 0.2s;
+        }
+        .meal-check-btn.checked { background: var(--green); border-color: var(--green); color: white; }
+
+        /* CHIPS */
+        .chip { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 999px; font-size: 0.72rem; font-weight: 700; cursor: default; }
+        .chip-interactive { cursor: pointer; transition: all 0.2s; }
+        .chip-interactive:hover { transform: scale(1.04); }
+        .chip-orange { background: rgba(251, 146, 60, 0.15); color: var(--orange); border: 1px solid rgba(251, 146, 60, 0.25); }
+        .chip-yellow { background: rgba(250, 204, 21, 0.12); color: var(--yellow); border: 1px solid rgba(250, 204, 21, 0.2); }
+        .chip-green { background: var(--green-dim); color: var(--green); border: 1px solid rgba(22, 196, 127, 0.25); }
+        .chip-blue { background: var(--blue-dim); color: var(--blue); border: 1px solid rgba(56, 189, 248, 0.2); }
+        .chip-purple { background: rgba(167, 139, 250, 0.12); color: var(--purple); border: 1px solid rgba(167, 139, 250, 0.2); }
+        .chip-red { background: rgba(248, 113, 113, 0.15); color: var(--red); border: 1px solid rgba(248, 113, 113, 0.25); }
+        .chip-inactive { background: rgba(255, 255, 255, 0.05); color: var(--text-dim); border: 1px solid var(--border); }
+
+        /* NUTRITIONIST STUDIO */
+        .nutri-protocol-btn {
+            padding: 10px 14px; border-radius: 12px; border: 1px solid var(--border);
+            background: rgba(255, 255, 255, 0.03); color: var(--text); font-size: 0.8rem; font-weight: 700;
+            cursor: pointer; transition: all 0.2s; text-align: left; display: flex; align-items: center; justify-content: space-between;
+        }
+        .nutri-protocol-btn:hover { background: rgba(167, 139, 250, 0.12); border-color: var(--purple); color: white; }
+
+        .meal-builder-row {
+            display: grid; grid-template-columns: 140px 90px 1fr 90px 40px; gap: 10px;
+            align-items: center; padding: 10px 14px; border-radius: 12px; background: rgba(255, 255, 255, 0.03); border: 1px solid var(--border);
+        }
+
+        /* TABLES */
+        .app-table { width: 100%; border-collapse: collapse; }
+        .app-table th { padding: 12px 14px; text-align: left; font-size: 0.68rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--text-dim); border-bottom: 1px solid var(--border); background: rgba(255, 255, 255, 0.02); }
+        .app-table td { padding: 12px 14px; border-bottom: 1px solid rgba(255, 255, 255, 0.04); font-size: 0.85rem; vertical-align: middle; }
+        .app-table tr:hover td { background: rgba(255, 255, 255, 0.02); }
+
+        /* ROUTING */
+        .route-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-xl); padding: 20px; position: relative; transition: all 0.2s; }
+        .route-card.best { border-color: var(--green); box-shadow: 0 0 30px rgba(22, 196, 127, 0.15); }
+        .best-badge { position: absolute; top: -10px; right: 20px; background: var(--green); color: white; font-size: 0.65rem; font-weight: 800; padding: 4px 12px; border-radius: 999px; text-transform: uppercase; letter-spacing: 0.1em; }
+
+        .map-visual {
+            background-image: url('https://images.unsplash.com/photo-1524661135-423995f22d0b?auto=format&fit=crop&q=80&w=1200');
+            background-size: cover; background-position: center; border-radius: var(--radius-xl); position: relative; overflow: hidden; min-height: 280px;
+        }
+        .map-overlay { position: absolute; inset: 0; background: rgba(6, 11, 20, 0.6); }
+        .map-pin { position: absolute; top: 48%; left: 50%; transform: translate(-50%, -50%); display: flex; flex-direction: column; align-items: center; }
+        .map-pin-label { background: var(--green); color: white; font-size: 0.8rem; font-weight: 800; padding: 8px 14px; border-radius: 12px; white-space: nowrap; box-shadow: 0 4px 20px var(--green-glow); animation: float 2.5s ease-in-out infinite; }
+        .map-ping { position: absolute; top: 48%; left: 50%; transform: translate(-50%, -50%); width: 80px; height: 80px; background: var(--green-glow); border-radius: 50%; animation: spin 4s linear infinite; }
+
+        /* TOAST */
+        .toast-popup { position: fixed; bottom: 24px; right: 24px; padding: 14px 20px; border-radius: 14px; background: rgba(14, 27, 50, 0.95); border: 1px solid var(--green); color: white; font-size: 0.88rem; font-weight: 700; display: flex; align-items: center; gap: 10px; box-shadow: 0 10px 40px rgba(0, 0, 0, 0.6); z-index: 1000; animation: fadeSlideUp 0.3s ease forwards; }
+
+        .spinner { width: 20px; height: 20px; border: 2px solid rgba(255, 255, 255, 0.2); border-top-color: white; border-radius: 50%; animation: spin 0.7s linear infinite; }
+        .divider { height: 1px; background: var(--border); margin: 16px 0; }
+
+        .flex { display: flex; }
+        .flex-col { flex-direction: column; }
+        .items-center { align-items: center; }
+        .justify-between { justify-content: space-between; }
+        .gap-6 { gap: 6px; }
+        .gap-8 { gap: 8px; }
+        .gap-12 { gap: 12px; }
+        .gap-16 { gap: 16px; }
+        .gap-20 { gap: 20px; }
+        .grid-2 { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; }
+        .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+        .grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
+        .w-full { width: 100%; }
+
+        @media (max-width: 1024px) {
+            .login-hero { display: none; }
+            .sidebar { width: 230px; }
+            .main-content { padding: 20px; }
+            .grid-4, .grid-3 { grid-template-columns: repeat(2, 1fr); }
+            .meal-builder-row { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body class="bg-mesh">
+
+    <!-- Boot loader -->
+    <div id="boot-loader">
+        <div class="boot-logo">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none">
+                <path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10 10-4.5 10-10S17.5 2 12 2zm-1 14.5v-9l7 4.5-7 4.5z" fill="#16C47F"/>
+            </svg>
+            SmartDiet
+        </div>
+        <div class="boot-spinner"></div>
+        <div style="font-size:0.8rem;color:#64748B;font-weight:500">Conectando ecossistema de saúde & varejo...</div>
+    </div>
+
+    <div id="app">
+
+        <!-- ============================================================ -->
+        <!-- 1. TELA DE LOGIN VIP                                          -->
+        <!-- ============================================================ -->
+        <transition name="fade">
+            <div v-if="route === 'login'" class="login-wrap" key="login">
+                <!-- Lado Visual -->
+                <div class="login-hero">
+                    <img class="login-hero-img" src="https://images.unsplash.com/photo-1490645935967-10de6ba17061?auto=format&fit=crop&q=80&w=1400" alt="Healthy Food">
+                    <div class="login-hero-overlay"></div>
+
+                    <!-- Métricas flutuantes animadas -->
+                    <div class="floating-card glass fc1 anim-float" style="animation-delay:0s">
+                        <div style="width:34px;height:34px;border-radius:10px;background:var(--green-dim);display:flex;align-items:center;justify-content:center;color:var(--green)"><i class="fa-solid fa-user-doctor"></i></div>
+                        <div>
+                            <div style="font-size:0.95rem;font-weight:900;color:var(--green)">100% Sincronizado</div>
+                            <div style="font-size:0.65rem;color:var(--text-muted)">Nutricionista → Paciente → Varejo</div>
+                        </div>
+                    </div>
+                    <div class="floating-card glass fc2 anim-float" style="animation-delay:0.8s">
+                        <div style="width:34px;height:34px;border-radius:10px;background:var(--blue-dim);display:flex;align-items:center;justify-content:center;color:var(--blue)"><i class="fa-solid fa-radar"></i></div>
+                        <div>
+                            <div style="font-size:0.95rem;font-weight:900;color:var(--blue)">Estoque em Tempo Real</div>
+                            <div style="font-size:0.65rem;color:var(--text-muted)">4 Redes Varejistas Conectadas</div>
+                        </div>
+                    </div>
+                    <div class="floating-card glass fc3 anim-float" style="animation-delay:1.5s">
+                        <div style="width:34px;height:34px;border-radius:10px;background:var(--orange-dim);display:flex;align-items:center;justify-content:center;color:var(--orange)"><i class="fa-solid fa-shield-halved"></i></div>
+                        <div>
+                            <div style="font-size:0.95rem;font-weight:900;color:var(--orange)">Segurança Alimentar</div>
+                            <div style="font-size:0.65rem;color:var(--text-muted)">Zero Glúten · Zero Lactose · Vegano</div>
+                        </div>
+                    </div>
+
+                    <div class="login-hero-content">
+                        <div style="display:inline-flex;align-items:center;gap:8px;padding:6px 14px;border-radius:999px;background:var(--green-dim);color:var(--green);font-size:0.75rem;font-weight:800;border:1px solid rgba(22,196,127,0.3);margin-bottom:16px">
+                            <i class="fa-solid fa-circle-check"></i> Plataforma Multilateral Integrada
+                        </div>
+                        <h1>Onde a <span class="text-gradient">Nutrição Clínica</span> encontra o Varejo em Tempo Real.</h1>
+                        <p>Decodificação inteligente de dietas, geração automatizada de compras e cruzamento de estoques com economia de tempo e custo.</p>
+                    </div>
+                </div>
+
+                <!-- Formulário de Login & Perfis de Demonstração -->
+                <div class="login-form-wrap">
+                    <div style="max-width:420px;width:100%;margin:0 auto">
+                        <div class="login-logo">
+                            <i class="fa-solid fa-leaf"></i>
+                            <span>SmartDiet</span>
+                        </div>
+
+                        <h2 style="font-size:1.6rem;font-weight:900;margin-bottom:4px">Acesso ao Sistema</h2>
+                        <p class="text-muted text-sm" style="margin-bottom:24px">Selecione o agente econômico ou digite suas credenciais</p>
+
+                        <form @submit.prevent="handleLogin">
+                            <div style="margin-bottom:14px">
+                                <label class="form-label">E-mail</label>
+                                <input type="email" v-model="loginForm.email" class="form-input" placeholder="ex: sarah@nutri.com" required>
+                            </div>
+                            <div style="margin-bottom:20px">
+                                <label class="form-label">Senha</label>
+                                <input type="password" v-model="loginForm.password" class="form-input" placeholder="••••••••" required>
+                            </div>
+                            <p v-if="loginError" style="color:var(--red);font-size:0.8rem;margin-bottom:12px;font-weight:600">{{ loginError }}</p>
+                            <button type="submit" class="btn-primary">
+                                <div v-if="isLogging" class="spinner"></div>
+                                <span v-else>Entrar na Plataforma <i class="fa-solid fa-arrow-right" style="margin-left:4px"></i></span>
+                            </button>
+                        </form>
+
+                        <div class="divider"></div>
+
+                        <p style="font-size:0.68rem;font-weight:800;text-transform:uppercase;letter-spacing:0.12em;color:var(--text-dim);margin-bottom:12px">
+                            Acesso Rápido — 3 Agentes Econômicos
+                        </p>
+                        <div style="display:grid;grid-template-columns:repeat(3, 1fr);gap:8px">
+                            <button class="quick-btn" @click="autoLogin('paciente@demo.com')">
+                                <div style="color:var(--green);font-size:1rem"><i class="fa-solid fa-mobile-screen"></i></div>
+                                <div>Consumidor</div>
+                                <div style="font-size:0.62rem;color:var(--text-dim);font-weight:500">André Suhai</div>
+                            </button>
+                            <button class="quick-btn" @click="autoLogin('sarah@nutri.com')" style="border-color:rgba(167,139,250,0.3)">
+                                <div style="color:var(--purple);font-size:1rem"><i class="fa-solid fa-user-doctor"></i></div>
+                                <div style="color:var(--purple)">Nutricionista</div>
+                                <div style="font-size:0.62rem;color:var(--text-dim);font-weight:500">Dra. Sarah Mello</div>
+                            </button>
+                            <button class="quick-btn" @click="autoLogin('gestor@pda.com')">
+                                <div style="color:var(--blue);font-size:1rem"><i class="fa-solid fa-store"></i></div>
+                                <div>Varejo B2B</div>
+                                <div style="font-size:0.62rem;color:var(--text-dim);font-weight:500">Pão de Açúcar</div>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </transition>
+
+        <!-- ============================================================ -->
+        <!-- 2. DASHBOARD PRINCIPAL                                        -->
+        <!-- ============================================================ -->
+        <transition name="fade">
+            <div v-if="route === 'dashboard'" class="flex w-full" style="height:100%" key="dash">
+
+                <!-- SIDEBAR DINÂMICA -->
+                <aside class="sidebar">
+                    <div class="sidebar-logo">
+                        <i class="fa-solid fa-leaf"></i> SmartDiet
+                    </div>
+
+                    <!-- 1. Menu do Consumidor -->
+                    <div v-if="userRole === 'consumer'" class="sidebar-section">
+                        <div class="sidebar-label">Minha Rotina</div>
+                        <button class="nav-btn" :class="tab==='home' ? 'active-green' : ''" @click="gotoTab('home')">
+                            <span class="nav-icon"><i class="fa-solid fa-house-chimney"></i></span> Início
+                        </button>
+                        <button class="nav-btn" :class="tab==='diet' ? 'active-green' : ''" @click="gotoTab('diet')">
+                            <span class="nav-icon"><i class="fa-solid fa-utensils"></i></span> Plano Alimentar
+                        </button>
+                        <button class="nav-btn" :class="tab==='cart' ? 'active-green' : ''" @click="gotoTab('cart')">
+                            <span class="nav-icon"><i class="fa-solid fa-cart-shopping"></i></span> Lista Inteligente
+                            <span v-if="cartItems.length" class="nav-badge">{{ cartItems.length }}</span>
+                        </button>
+                        <button class="nav-btn" :class="tab==='routes' ? 'active-green' : ''" @click="gotoTab('routes')">
+                            <span class="nav-icon"><i class="fa-solid fa-map-location-dot"></i></span> Rotas & Mercados
+                        </button>
+                        <button class="nav-btn" :class="tab==='profile' ? 'active-green' : ''" @click="gotoTab('profile')">
+                            <span class="nav-icon"><i class="fa-solid fa-circle-user"></i></span> Meu Perfil
+                        </button>
+                    </div>
+
+                    <!-- 2. Menu da Nutricionista (Dra. Sarah) -->
+                    <div v-if="userRole === 'nutritionist'" class="sidebar-section">
+                        <div class="sidebar-label">Prescrição Clínica</div>
+                        <button class="nav-btn" :class="tab==='nutri_prescription' ? 'active-purple' : ''" @click="gotoTab('nutri_prescription')">
+                            <span class="nav-icon"><i class="fa-solid fa-wand-magic-sparkles"></i></span> Prescrição & Dieta
+                        </button>
+                        <button class="nav-btn" :class="tab==='nutri_patients' ? 'active-purple' : ''" @click="gotoTab('nutri_patients')">
+                            <span class="nav-icon"><i class="fa-solid fa-users"></i></span> Meus Pacientes
+                            <span class="nav-badge" style="background:var(--purple)">{{ patientsList.length }}</span>
+                        </button>
+                        <button class="nav-btn" :class="tab==='nutri_catalog' ? 'active-purple' : ''" @click="gotoTab('nutri_catalog')">
+                            <span class="nav-icon"><i class="fa-solid fa-bowl-food"></i></span> Banco de Alimentos
+                        </button>
+                    </div>
+
+                    <!-- 3. Menu do Varejo B2B -->
+                    <div v-if="userRole === 'market'" class="sidebar-section">
+                        <div class="sidebar-label">Varejo & Analytics</div>
+                        <button class="nav-btn" :class="tab==='analytics' ? 'active-blue' : ''" @click="gotoTab('analytics')">
+                            <span class="nav-icon"><i class="fa-solid fa-chart-pie"></i></span> Data Intelligence
+                        </button>
+                        <button class="nav-btn" :class="tab==='inventory' ? 'active-blue' : ''" @click="gotoTab('inventory')">
+                            <span class="nav-icon"><i class="fa-solid fa-boxes-stacked"></i></span> Gestão de Estoque
+                            <span class="nav-badge" style="background:var(--blue)">!</span>
+                        </button>
+                    </div>
+
+                    <!-- Rodapé do Usuário -->
+                    <div class="sidebar-footer">
+                        <div class="user-card">
+                            <img :src="userProfile.avatar || (userRole==='nutritionist' ? 'https://images.unsplash.com/photo-1559839734-2b71ea197ec2?auto=format&fit=crop&w=100&q=80' : userRole==='market' ? 'https://images.unsplash.com/photo-1560250097-0b93528c311a?auto=format&fit=crop&w=100&q=80' : 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=100&q=80')" class="user-avatar" alt="Avatar">
+                            <div style="flex:1;overflow:hidden">
+                                <div style="font-size:0.85rem;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ user.name }}</div>
+                                <div style="font-size:0.68rem;font-weight:700;text-transform:uppercase" :style="{color: userRole==='nutritionist' ? 'var(--purple)' : userRole==='market' ? 'var(--blue)' : 'var(--green)'}">
+                                    {{ userRole === 'consumer' ? 'Paciente' : userRole === 'nutritionist' ? 'Nutricionista CRN' : 'Gestor Varejo B2B' }}
+                                </div>
+                            </div>
+                            <button class="logout-btn" @click="logout" title="Desconectar"><i class="fa-solid fa-power-off"></i></button>
+                        </div>
+                    </div>
+                </aside>
+
+                <!-- ÁREA PRINCIPAL -->
+                <main class="main-content">
+                    <transition name="fade" mode="out-in">
+
+                        <!-- ==================================================== -->
+                        <!-- CONSUMIDOR: HOME / RESUMO DO DIA                      -->
+                        <!-- ==================================================== -->
+                        <div v-if="tab==='home' && userRole==='consumer'" key="home" class="anim-up">
+                            <div class="page-header">
+                                <div>
+                                    <div class="page-title">Olá, {{ user.name?.split(' ')[0] }}! 👋</div>
+                                    <div class="page-subtitle">{{ todayFormatted }} · Dieta ativa: <strong style="color:var(--text)">{{ dietPlan?.title || 'Plano Personalizado' }}</strong></div>
+                                </div>
+                                <div class="flex gap-8 items-center">
+                                    <span class="chip chip-green"><i class="fa-solid fa-fire"></i> Sequência: {{ progress.streak || 7 }} dias</span>
+                                    <span class="chip chip-purple"><i class="fa-solid fa-user-doctor"></i> Prescrito por Dra. Sarah</span>
+                                </div>
+                            </div>
+
+                            <!-- Progresso Calórico & Macros -->
+                            <div class="card" style="padding:24px;margin-bottom:20px">
+                                <div class="flex items-center gap-24 flex-wrap">
+                                    <div class="ring-container">
+                                        <svg width="150" height="150" viewBox="0 0 160 160">
+                                            <circle class="ring-bg" cx="80" cy="80" r="68"/>
+                                            <circle class="ring-fill" cx="80" cy="80" r="68" stroke="url(#ringGrad)" :stroke-dasharray="427" :stroke-dashoffset="427 - (427 * kcalPct / 100)"/>
+                                            <defs>
+                                                <linearGradient id="ringGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+                                                    <stop offset="0%" stop-color="#16C47F"/>
+                                                    <stop offset="100%" stop-color="#38BDF8"/>
+                                                </linearGradient>
+                                            </defs>
+                                        </svg>
+                                        <div class="ring-center">
+                                            <div style="font-size:1.6rem;font-weight:900" class="text-gradient">{{ progress.kcal_consumed || 0 }}</div>
+                                            <div style="font-size:0.65rem;color:var(--text-muted);font-weight:700;text-transform:uppercase">de {{ progress.kcal_target || 2150 }} kcal</div>
+                                        </div>
+                                    </div>
+
+                                    <div style="flex:1;min-width:220px">
+                                        <div style="font-size:0.75rem;font-weight:800;text-transform:uppercase;letter-spacing:0.08em;color:var(--text-dim);margin-bottom:12px">Distribuição de Macronutrientes</div>
+                                        <div class="macro-bar-wrap">
+                                            <div class="macro-bar-header">
+                                                <span><i class="fa-solid fa-drumstick-bite" style="color:#f87171;margin-right:6px"></i>Proteínas</span>
+                                                <span style="color:var(--text-muted)">{{ progress.prot_consumed || 0 }}g / {{ progress.prot_target || 160 }}g</span>
+                                            </div>
+                                            <div class="macro-bar-track"><div class="macro-bar-fill" style="background:linear-gradient(90deg,#f87171,#fb923c)" :style="{width: Math.min(100, (progress.prot_consumed||0)/(progress.prot_target||160)*100)+'%'}"></div></div>
+                                        </div>
+                                        <div class="macro-bar-wrap">
+                                            <div class="macro-bar-header">
+                                                <span><i class="fa-solid fa-wheat-awn" style="color:#facc15;margin-right:6px"></i>Carboidratos</span>
+                                                <span style="color:var(--text-muted)">{{ progress.carb_consumed || 0 }}g / {{ progress.carb_target || 220 }}g</span>
+                                            </div>
+                                            <div class="macro-bar-track"><div class="macro-bar-fill" style="background:linear-gradient(90deg,#facc15,#fb923c)" :style="{width: Math.min(100, (progress.carb_consumed||0)/(progress.carb_target||220)*100)+'%'}"></div></div>
+                                        </div>
+                                        <div class="macro-bar-wrap">
+                                            <div class="macro-bar-header">
+                                                <span><i class="fa-solid fa-droplet" style="color:#a78bfa;margin-right:6px"></i>Gorduras</span>
+                                                <span style="color:var(--text-muted)">{{ progress.fat_consumed || 0 }}g / {{ progress.fat_target || 65 }}g</span>
+                                            </div>
+                                            <div class="macro-bar-track"><div class="macro-bar-fill" style="background:linear-gradient(90deg,#a78bfa,#38bdf8)" :style="{width: Math.min(100, (progress.fat_consumed||0)/(progress.fat_target||65)*100)+'%'}"></div></div>
+                                        </div>
+                                    </div>
+
+                                    <div style="text-align:center;min-width:110px">
+                                        <div style="font-size:2.8rem;font-weight:900" class="text-gradient">{{ progress.meals_done || 0 }}/{{ progress.meals_total || 5 }}</div>
+                                        <div style="font-size:0.72rem;color:var(--text-muted);font-weight:700;text-transform:uppercase">Refeições Feitas</div>
+                                        <div style="margin-top:10px">
+                                            <div v-for="i in (progress.meals_total || 5)" :key="i" style="display:inline-block;width:10px;height:10px;border-radius:50%;margin:2px;" :style="{background: i <= (progress.meals_done||0) ? 'var(--green)' : 'rgba(255,255,255,0.1)'}"></div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Botões de Ação Rápida -->
+                            <div style="display:flex;gap:12px;flex-wrap:wrap">
+                                <button class="btn-primary" style="width:auto;padding:12px 24px" @click="gotoTab('diet')">
+                                    <i class="fa-solid fa-utensils"></i> Acessar Meu Cardápio
+                                </button>
+                                <button class="btn-primary" style="width:auto;padding:12px 24px;background:var(--surface2);border:1px solid var(--border2)" @click="buildCart();gotoTab('cart')">
+                                    <i class="fa-solid fa-cart-shopping" style="color:var(--green)"></i> Gerar Lista de Compras da Semana
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- ==================================================== -->
+                        <!-- CONSUMIDOR: PLANO ALIMENTAR                          -->
+                        <!-- ==================================================== -->
+                        <div v-if="tab==='diet' && userRole==='consumer'" key="diet" class="anim-up">
+                            <div class="page-header">
+                                <div>
+                                    <div class="page-title">{{ dietPlan?.title || 'Plano Alimentar Prescrito' }}</div>
+                                    <div class="page-subtitle">Prescrição Clínica · Objetivo: <strong style="color:var(--green)">{{ userProfile.goal }}</strong></div>
+                                </div>
+                                <div class="flex gap-8 flex-wrap">
+                                    <span v-for="r in restrictions" :key="r.id" class="chip" :class="chipColor(r.color)">
+                                        <i :class="'fa-solid ' + r.icon"></i> {{ r.tag_name }}
+                                    </span>
+                                </div>
+                            </div>
+
+                            <div v-if="dietPlan?.notes" class="card" style="padding:16px 20px;margin-bottom:18px;border-left:4px solid var(--purple)">
+                                <div style="font-size:0.72rem;font-weight:800;text-transform:uppercase;color:var(--purple);margin-bottom:4px"><i class="fa-solid fa-stethoscope"></i> Orientações da Dra. Sarah Mello:</div>
+                                <div style="font-size:0.88rem;color:var(--text)">{{ dietPlan.notes }}</div>
+                            </div>
+
+                            <!-- Lista de Refeições -->
+                            <div style="display:flex;flex-direction:column;gap:12px">
+                                <div v-for="(item, idx) in dietItems" :key="item.id" class="meal-card" :class="item.checked ? 'checked' : ''">
+                                    <div class="flex items-center" style="gap:0">
+                                        <img :src="item.image_url || 'https://images.unsplash.com/photo-1490645935967-10de6ba17061?auto=format&fit=crop&w=200&q=80'" class="meal-card-img" :alt="item.meal_name" style="height:100px">
+                                        <div class="flex items-center justify-between" style="flex:1;padding:16px 20px;gap:14px;flex-wrap:wrap">
+                                            <div style="flex:1;min-width:180px">
+                                                <div style="font-size:0.7rem;font-weight:800;text-transform:uppercase;color:var(--green);margin-bottom:2px">
+                                                    <i class="fa-regular fa-clock"></i> {{ item.meal_time }}
+                                                </div>
+                                                <div style="font-size:1.05rem;font-weight:800;margin-bottom:4px">{{ item.meal_name }}</div>
+                                                <div style="font-size:0.82rem;color:var(--text-muted)">{{ item.product_name || item.product_category }} · <strong style="color:var(--text)">{{ item.qty_grams }}g</strong></div>
+                                            </div>
+
+                                            <div v-if="item.nutritional_info" style="display:flex;gap:8px">
+                                                <div style="text-align:center;background:rgba(255,255,255,0.04);border:1px solid var(--border);border-radius:8px;padding:6px 10px">
+                                                    <div style="font-size:0.9rem;font-weight:900;color:var(--green)">{{ Math.round((item.nutritional_info.kcal||0)*item.qty_grams/100) }}</div>
+                                                    <div style="font-size:0.58rem;color:var(--text-dim);text-transform:uppercase;font-weight:700">kcal</div>
+                                                </div>
+                                                <div style="text-align:center;background:rgba(255,255,255,0.04);border:1px solid var(--border);border-radius:8px;padding:6px 10px">
+                                                    <div style="font-size:0.9rem;font-weight:900;color:#f87171">{{ Math.round((item.nutritional_info.prot||0)*item.qty_grams/100) }}g</div>
+                                                    <div style="font-size:0.58rem;color:var(--text-dim);text-transform:uppercase;font-weight:700">prot</div>
+                                                </div>
+                                                <div style="text-align:center;background:rgba(255,255,255,0.04);border:1px solid var(--border);border-radius:8px;padding:6px 10px">
+                                                    <div style="font-size:0.9rem;font-weight:900;color:var(--yellow)">{{ Math.round((item.nutritional_info.carb||0)*item.qty_grams/100) }}g</div>
+                                                    <div style="font-size:0.58rem;color:var(--text-dim);text-transform:uppercase;font-weight:700">carb</div>
+                                                </div>
+                                            </div>
+
+                                            <button class="meal-check-btn" :class="item.checked ? 'checked' : ''" @click="toggleMeal(item)" title="Marcar como consumida hoje">
+                                                <i class="fa-solid fa-check"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div style="margin-top:24px;display:flex;justify-content:flex-end">
+                                <button class="btn-primary" style="width:auto;padding:14px 28px" @click="buildCart();gotoTab('cart')">
+                                    Gerar Lista Inteligente <i class="fa-solid fa-arrow-right" style="margin-left:6px"></i>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- ==================================================== -->
+                        <!-- CONSUMIDOR: LISTA INTELIGENTE                        -->
+                        <!-- ==================================================== -->
+                        <div v-if="tab==='cart' && userRole==='consumer'" key="cart" class="anim-up">
+                            <div class="page-header">
+                                <div>
+                                    <div class="page-title">Lista Inteligente de Compras</div>
+                                    <div class="page-subtitle">Decodificada a partir do seu plano prescrito · Validação de restrições ativa</div>
+                                </div>
+                                <div class="flex gap-8">
+                                    <select v-model="cartFilter" class="form-input" style="width:auto;padding:8px 14px">
+                                        <option value="">Todas as categorias</option>
+                                        <option v-for="c in cartCategories" :key="c" :value="c">{{ c }}</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div class="card" style="overflow:hidden;margin-bottom:20px">
+                                <div style="padding:14px 20px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center">
+                                    <div style="font-size:0.75rem;font-weight:800;text-transform:uppercase;color:var(--text-dim)">{{ filteredCartItems.length }} itens na cesta semanal</div>
+                                    <div class="chip chip-green"><i class="fa-solid fa-shield-check"></i> 100% Compatível com suas restrições</div>
+                                </div>
+
+                                <div v-for="item in filteredCartItems" :key="item.id" style="display:flex;align-items:center;gap:14px;padding:14px 20px;border-bottom:1px solid var(--border)">
+                                    <div style="width:24px;height:24px;border-radius:6px;background:var(--green);display:flex;align-items:center;justify-content:center;font-size:0.7rem;color:white"><i class="fa-solid fa-check"></i></div>
+                                    <div style="flex:1">
+                                        <div style="font-weight:800;font-size:0.95rem">{{ item.name }}</div>
+                                        <div style="font-size:0.75rem;color:var(--text-muted)">{{ item.brand }} · Consumo estimado: <strong style="color:var(--text)">{{ item.weekly_qty }}</strong></div>
+                                    </div>
+                                    <span class="chip chip-blue">{{ item.category }}</span>
+                                    <div style="font-weight:900;font-size:0.95rem;color:var(--green)">R$ {{ item.base_price.toFixed(2).replace('.',',') }}</div>
+                                </div>
+                            </div>
+
+                            <!-- Total & Algoritmo -->
+                            <div class="card" style="padding:20px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:16px">
+                                <div>
+                                    <div style="font-size:0.72rem;font-weight:800;text-transform:uppercase;color:var(--text-dim);margin-bottom:2px">Custo Base da Cesta</div>
+                                    <div style="font-size:1.8rem;font-weight:900" class="text-gradient">R$ {{ cartTotal.toFixed(2).replace('.',',') }}</div>
+                                </div>
+                                <button class="btn-primary" style="width:auto;padding:14px 28px" @click="runAlgorithm">
+                                    <div v-if="isMatching" class="spinner"></div>
+                                    <span v-else><i class="fa-solid fa-radar"></i> Cruzar com Estoques dos Supermercados</span>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- ==================================================== -->
+                        <!-- CONSUMIDOR: ROTAS & MERCADOS                         -->
+                        <!-- ==================================================== -->
+                        <div v-if="tab==='routes' && userRole==='consumer'" key="routes" class="anim-up">
+                            <div class="page-header">
+                                <div>
+                                    <div class="page-title">Melhores Rotas & Mercados</div>
+                                    <div class="page-subtitle">{{ routingResult.analyzed_markets || 4 }} supermercados analisados na sua vizinhança</div>
+                                </div>
+                            </div>
+
+                            <div v-if="!routingResult.routes || !routingResult.routes.length" style="text-align:center;padding:60px 20px">
+                                <i class="fa-solid fa-map-location-dot" style="font-size:3rem;color:var(--text-dim);margin-bottom:14px;display:block"></i>
+                                <div style="font-size:1.1rem;font-weight:800">Ainda não foi realizado o cruzamento de estoque.</div>
+                                <button class="btn-primary" style="width:auto;margin:20px auto 0;padding:12px 24px" @click="buildCart();runAlgorithm()">Executar Cruzamento Agora</button>
+                            </div>
+
+                            <div v-else style="display:grid;grid-template-columns:1fr 1fr;gap:20px;align-items:start">
+                                <div style="display:flex;flex-direction:column;gap:14px">
+                                    <div v-for="(r, idx) in routingResult.routes" :key="r.market_id" class="route-card" :class="idx===0 ? 'best' : ''">
+                                        <div v-if="idx===0" class="best-badge">🏆 Recomendação IA (Melhor Rota)</div>
+                                        <div class="flex items-center justify-between" style="margin-bottom:12px">
+                                            <div class="flex items-center gap-12">
+                                                <div style="width:44px;height:44px;border-radius:12px;background:var(--surface2);display:flex;align-items:center;justify-content:center;font-size:1.1rem" :style="{color: idx===0 ? 'var(--green)' : 'var(--text-muted)'}">
+                                                    <i class="fa-solid fa-store"></i>
+                                                </div>
+                                                <div>
+                                                    <div style="font-weight:900;font-size:1.05rem">{{ r.brand }}</div>
+                                                    <div style="font-size:0.75rem;color:var(--text-muted)"><i class="fa-solid fa-location-dot"></i> {{ r.branch }} · {{ r.distance_km }} km de você</div>
+                                                </div>
+                                            </div>
+                                            <div style="text-align:right">
+                                                <div style="font-size:1.4rem;font-weight:900" :style="{color: idx===0 ? 'var(--green)' : 'var(--text)'}">R$ {{ r.total_price.toFixed(2).replace('.',',') }}</div>
+                                                <div style="font-size:0.7rem;color:var(--text-muted)">total da cesta</div>
+                                            </div>
+                                        </div>
+
+                                        <div style="margin-bottom:10px">
+                                            <div style="display:flex;justify-content:space-between;font-size:0.75rem;font-weight:700;margin-bottom:4px">
+                                                <span>Disponibilidade do Estoque</span>
+                                                <span :style="{color: r.match_score>=90 ? 'var(--green)' : r.match_score>=70 ? 'var(--yellow)' : 'var(--red)'}">{{ r.match_score }}% dos itens</span>
+                                            </div>
+                                            <div class="macro-bar-track">
+                                                <div class="macro-bar-fill" :style="{width: r.match_score+'%', background: r.match_score>=90 ? 'linear-gradient(90deg,#16C47F,#38BDF8)' : 'var(--yellow)'}"></div>
+                                            </div>
+                                        </div>
+
+                                        <div style="display:flex;gap:8px;font-size:0.75rem;font-weight:700;flex-wrap:wrap">
+                                            <span class="chip chip-green"><i class="fa-solid fa-check"></i> {{ r.items_found }} itens disponíveis</span>
+                                            <span v-if="r.items_missing?.length" class="chip chip-red"><i class="fa-solid fa-xmark"></i> {{ r.items_missing.length }} em falta</span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Mapa Ilustrativo -->
+                                <div class="map-visual">
+                                    <div class="map-overlay"></div>
+                                    <div class="map-ping"></div>
+                                    <div class="map-pin" v-if="routingResult.routes?.length">
+                                        <div class="map-pin-label">📍 {{ routingResult.routes[0].brand }} · R$ {{ routingResult.routes[0].total_price.toFixed(2).replace('.',',') }}</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- ==================================================== -->
+                        <!-- CONSUMIDOR: PERFIL                                   -->
+                        <!-- ==================================================== -->
+                        <div v-if="tab==='profile' && userRole==='consumer'" key="profile" class="anim-up">
+                            <div class="page-title" style="margin-bottom:20px">Meu Perfil Nutricional</div>
+                            <div style="display:grid;grid-template-columns:300px 1fr;gap:20px;align-items:start">
+                                <div class="card" style="padding:24px;text-align:center">
+                                    <img :src="userProfile.avatar || 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=200&q=80'" style="width:90px;height:90px;border-radius:50%;object-fit:cover;border:3px solid var(--green);margin:0 auto 12px;display:block">
+                                    <div style="font-size:1.2rem;font-weight:900">{{ user.name }}</div>
+                                    <div style="font-size:0.78rem;color:var(--text-muted);margin-bottom:16px">{{ user.email }}</div>
+                                    <div class="divider"></div>
+                                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+                                        <div style="padding:10px;background:var(--surface2);border-radius:10px">
+                                            <div style="font-size:1.2rem;font-weight:900;color:var(--green)">{{ userProfile.weight_kg || 82 }}</div>
+                                            <div style="font-size:0.65rem;color:var(--text-muted);text-transform:uppercase">kg</div>
+                                        </div>
+                                        <div style="padding:10px;background:var(--surface2);border-radius:10px">
+                                            <div style="font-size:1.2rem;font-weight:900;color:var(--blue)">{{ userProfile.height_cm || 180 }}</div>
+                                            <div style="font-size:0.65rem;color:var(--text-muted);text-transform:uppercase">cm</div>
+                                        </div>
+                                    </div>
+                                    <div style="margin-top:14px;padding:10px;border-radius:10px;background:var(--green-dim);color:var(--green);font-size:0.8rem;font-weight:800">
+                                        <i class="fa-solid fa-bullseye"></i> {{ userProfile.goal || 'Hipertrofia Muscular' }}
+                                    </div>
+                                </div>
+
+                                <div style="display:flex;flex-direction:column;gap:14px">
+                                    <div class="card" style="padding:20px">
+                                        <div style="font-size:0.75rem;font-weight:800;text-transform:uppercase;color:var(--text-dim);margin-bottom:12px">Restrições Clínicas Prescritas</div>
+                                        <div style="display:flex;gap:8px;flex-wrap:wrap">
+                                            <span v-for="r in restrictions" :key="r.id" class="chip" :class="chipColor(r.color)" style="padding:8px 14px;font-size:0.82rem">
+                                                <i :class="'fa-solid ' + r.icon"></i> {{ r.tag_name }}
+                                            </span>
+                                        </div>
+                                    </div>
+
+                                    <div class="card" style="padding:20px;display:flex;align-items:center;gap:14px">
+                                        <img src="https://images.unsplash.com/photo-1559839734-2b71ea197ec2?auto=format&fit=crop&w=100&q=80" style="width:50px;height:50px;border-radius:50%;object-fit:cover;border:2px solid var(--purple)">
+                                        <div>
+                                            <div style="font-weight:800;font-size:0.95rem">Dra. Sarah Mello</div>
+                                            <div style="font-size:0.75rem;color:var(--purple)">CRN 9999 · Nutricionista Prescritora Responsável</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- ==================================================== -->
+                        <!-- NUTRICIONISTA: ESTÚDIO DE PRESCRIÇÃO CLÍNICA          -->
+                        <!-- ==================================================== -->
+                        <div v-if="tab==='nutri_prescription' && userRole==='nutritionist'" key="nutri_rx" class="anim-up">
+                            <div class="page-header">
+                                <div>
+                                    <div class="page-title">Estúdio de Prescrição Nutricional</div>
+                                    <div class="page-subtitle">Monte ou edite dietas clínicas com cálculo automático de macros e sincronização imediata</div>
+                                </div>
+                                <button class="btn-primary btn-purple" style="width:auto;padding:12px 24px" @click="savePrescription">
+                                    <i class="fa-solid fa-cloud-arrow-up"></i> Salvar e Enviar ao Paciente
+                                </button>
+                            </div>
+
+                            <!-- Seletor de Paciente & Protocolos Rápidos -->
+                            <div class="card" style="padding:20px;margin-bottom:18px">
+                                <div style="display:grid;grid-template-columns:1fr 2fr;gap:20px;align-items:center">
+                                    <div>
+                                        <label class="form-label" style="color:var(--purple)"><i class="fa-solid fa-user"></i> Paciente em Atendimento</label>
+                                        <select v-model="selectedPatientId" @change="onSelectPatient" class="form-input" style="font-weight:800;font-size:0.95rem">
+                                            <option v-for="p in patientsList" :key="p.id" :value="p.id">{{ p.name }} ({{ p.email }})</option>
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label class="form-label"><i class="fa-solid fa-bolt"></i> Carregar Protocolo Clínico Predefinido</label>
+                                        <div style="display:grid;grid-template-columns:repeat(4, 1fr);gap:8px">
+                                            <button v-for="proto in clinicalProtocols" :key="proto.id" class="nutri-protocol-btn" @click="applyProtocol(proto)">
+                                                <span>{{ proto.name.split(' ')[0] }}</span>
+                                                <span style="font-size:0.7rem;color:var(--purple)">{{ proto.target_kcal }}k</span>
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Metas de Macronutrientes e Restrições -->
+                            <div style="display:grid;grid-template-columns:2fr 1fr;gap:18px;margin-bottom:18px">
+                                <div class="card" style="padding:20px">
+                                    <div style="font-size:0.78rem;font-weight:800;text-transform:uppercase;color:var(--text-dim);margin-bottom:12px">Parâmetros da Dieta</div>
+                                    <div class="grid-2" style="margin-bottom:14px">
+                                        <div>
+                                            <label class="form-label">Título da Dieta</label>
+                                            <input type="text" v-model="currentDiet.title" class="form-input" placeholder="ex: Bulking Hipertrófico">
+                                        </div>
+                                        <div>
+                                            <label class="form-label">Objetivo Clínico</label>
+                                            <input type="text" v-model="currentDiet.goal" class="form-input" placeholder="ex: Hipertrofia Muscular">
+                                        </div>
+                                    </div>
+
+                                    <div class="grid-4" style="margin-bottom:14px">
+                                        <div>
+                                            <label class="form-label">Meta Calórica</label>
+                                            <input type="number" v-model.number="currentDiet.target_kcal" class="form-input" style="font-weight:900;color:var(--green)">
+                                        </div>
+                                        <div>
+                                            <label class="form-label">Proteína (g)</label>
+                                            <input type="number" v-model.number="currentDiet.target_protein" class="form-input" style="font-weight:900;color:#f87171">
+                                        </div>
+                                        <div>
+                                            <label class="form-label">Carboidrato (g)</label>
+                                            <input type="number" v-model.number="currentDiet.target_carbs" class="form-input" style="font-weight:900;color:var(--yellow)">
+                                        </div>
+                                        <div>
+                                            <label class="form-label">Gordura (g)</label>
+                                            <input type="number" v-model.number="currentDiet.target_fat" class="form-input" style="font-weight:900;color:var(--purple)">
+                                        </div>
+                                    </div>
+
+                                    <div>
+                                        <label class="form-label">Orientações Nutricionais / Observações</label>
+                                        <textarea v-model="currentDiet.notes" class="form-input" rows="2" placeholder="Recomendações clínicas para o paciente..."></textarea>
+                                    </div>
+                                </div>
+
+                                <!-- Seleção de Restrições Clínicas -->
+                                <div class="card" style="padding:20px">
+                                    <div style="font-size:0.78rem;font-weight:800;text-transform:uppercase;color:var(--text-dim);margin-bottom:12px">Restrições & Regras Clínicas</div>
+                                    <div style="display:flex;flex-direction:column;gap:8px">
+                                        <div v-for="tag in allTagsList" :key="tag.id" class="chip chip-interactive" :class="currentDiet.restriction_tag_ids.includes(tag.id) ? chipColor(tag.color) : 'chip-inactive'" @click="toggleTagSelection(tag.id)">
+                                            <i :class="'fa-solid ' + tag.icon"></i>
+                                            <span style="flex:1">{{ tag.tag_name }}</span>
+                                            <i class="fa-solid" :class="currentDiet.restriction_tag_ids.includes(tag.id) ? 'fa-check' : 'fa-plus'"></i>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Montador Interativo de Refeições -->
+                            <div class="card" style="padding:20px">
+                                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+                                    <div>
+                                        <div style="font-size:1.1rem;font-weight:900">Refeições Prescritas ({{ currentDiet.meals.length }})</div>
+                                        <div style="font-size:0.75rem;color:var(--text-muted)">Configure os alimentos e porções em gramas</div>
+                                    </div>
+                                    <button class="btn-primary btn-purple" style="width:auto;padding:8px 16px;font-size:0.8rem" @click="addNewMeal">
+                                        <i class="fa-solid fa-plus"></i> Adicionar Refeição
+                                    </button>
+                                </div>
+
+                                <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:16px">
+                                    <div v-for="(m, idx) in currentDiet.meals" :key="idx" class="meal-builder-row">
+                                        <input type="text" v-model="m.meal_name" class="form-input" placeholder="Nome Refeição">
+                                        <input type="text" v-model="m.meal_time" class="form-input" placeholder="08:00">
+                                        <select v-model="m.recommended_product_id" class="form-input">
+                                            <option v-for="p in catalogProducts" :key="p.id" :value="p.id">{{ p.name }} ({{ p.category }})</option>
+                                        </select>
+                                        <div style="display:flex;align-items:center;gap:4px">
+                                            <input type="number" v-model.number="m.qty_grams" class="form-input" style="text-align:center" min="10">
+                                            <span style="font-size:0.75rem;color:var(--text-dim)">g</span>
+                                        </div>
+                                        <button @click="removeMeal(idx)" style="background:transparent;border:none;color:var(--red);cursor:pointer;font-size:0.9rem" title="Remover Refeição">
+                                            <i class="fa-solid fa-trash-can"></i>
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <!-- Resumo Calculado em Tempo Real -->
+                                <div style="padding:14px;border-radius:12px;background:rgba(22,196,127,0.06);border:1px solid rgba(22,196,127,0.2);display:flex;justify-content:space-between;align-items:center">
+                                    <div>
+                                        <div style="font-size:0.75rem;font-weight:800;color:var(--green)">Totais Calculados da Prescrição:</div>
+                                        <div style="font-size:0.85rem;color:var(--text-muted)">
+                                            Kcal: <strong style="color:var(--text)">{{ totalPrescribedKcal }} kcal</strong> |
+                                            Proteína: <strong style="color:#f87171">{{ totalPrescribedProt }}g</strong> |
+                                            Carboidrato: <strong style="color:var(--yellow)">{{ totalPrescribedCarb }}g</strong> |
+                                            Gordura: <strong style="color:var(--purple)">{{ totalPrescribedFat }}g</strong>
+                                        </div>
+                                    </div>
+                                    <button class="btn-primary btn-purple" style="width:auto;padding:10px 20px" @click="savePrescription">
+                                        <i class="fa-solid fa-check"></i> Publicar Prescrição
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- ==================================================== -->
+                        <!-- NUTRICIONISTA: MEUS PACIENTES                        -->
+                        <!-- ==================================================== -->
+                        <div v-if="tab==='nutri_patients' && userRole==='nutritionist'" key="nutri_pts" class="anim-up">
+                            <div class="page-header">
+                                <div>
+                                    <div class="page-title">Painel de Pacientes Acompanhados</div>
+                                    <div class="page-subtitle">{{ patientsList.length }} pacientes cadastrados com dietas ativas</div>
+                                </div>
+                            </div>
+
+                            <div style="display:grid;grid-template-columns:repeat(3, 1fr);gap:18px">
+                                <div v-for="p in patientsList" :key="p.id" class="card" style="padding:22px;display:flex;flex-direction:column;justify-content:space-between">
+                                    <div>
+                                        <div class="flex items-center gap-12" style="margin-bottom:14px">
+                                            <img :src="p.avatar_url || 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=150&q=80'" style="width:50px;height:50px;border-radius:50%;object-fit:cover;border:2px solid var(--purple)">
+                                            <div>
+                                                <div style="font-weight:900;font-size:1.05rem">{{ p.name }}</div>
+                                                <div style="font-size:0.75rem;color:var(--text-muted)">{{ p.email }}</div>
+                                            </div>
+                                        </div>
+
+                                        <div style="background:var(--surface2);border-radius:12px;padding:12px;margin-bottom:14px">
+                                            <div style="font-size:0.7rem;color:var(--purple);font-weight:800;text-transform:uppercase">Dieta Ativa:</div>
+                                            <div style="font-weight:800;font-size:0.9rem;margin-bottom:6px">{{ p.active_diet_title || 'Sem dieta ativa' }}</div>
+                                            <div style="font-size:0.78rem;color:var(--text-muted)">
+                                                Meta: <strong style="color:var(--text)">{{ p.target_kcal || 2000 }} kcal</strong> ({{ p.target_protein || 150 }}g P · {{ p.target_carbs || 200 }}g C)
+                                            </div>
+                                        </div>
+
+                                        <div style="margin-bottom:16px">
+                                            <div style="font-size:0.7rem;color:var(--text-dim);font-weight:800;text-transform:uppercase;margin-bottom:6px">Restrições Clínicas:</div>
+                                            <div style="display:flex;gap:6px;flex-wrap:wrap">
+                                                <span v-for="r in p.restrictions" :key="r.id" class="chip" :class="chipColor(r.color)">{{ r.tag_name }}</span>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <button class="btn-primary btn-purple" style="padding:10px" @click="loadPatientIntoStudio(p)">
+                                        <i class="fa-solid fa-pencil"></i> Editar Dieta do Paciente
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- ==================================================== -->
+                        <!-- NUTRICIONISTA: BANCO DE ALIMENTOS                    -->
+                        <!-- ==================================================== -->
+                        <div v-if="tab==='nutri_catalog' && userRole==='nutritionist'" key="nutri_cat" class="anim-up">
+                            <div class="page-header">
+                                <div>
+                                    <div class="page-title">Catálogo Clínico de Alimentos</div>
+                                    <div class="page-subtitle">Tabela nutricional por 100g e verificação de compatibilidade de restrições</div>
+                                </div>
+                                <input type="text" v-model="catalogSearch" placeholder="Buscar alimento ou categoria..." class="form-input" style="width:260px">
+                            </div>
+
+                            <div class="card" style="overflow:hidden">
+                                <table class="app-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Alimento / Produto</th>
+                                            <th>Categoria</th>
+                                            <th>Calorias (100g)</th>
+                                            <th>Proteína</th>
+                                            <th>Carboidrato</th>
+                                            <th>Gordura</th>
+                                            <th>Preço Base</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr v-for="item in filteredCatalog" :key="item.id">
+                                            <td style="font-weight:800">{{ item.name }}</td>
+                                            <td><span class="chip chip-blue">{{ item.category }}</span></td>
+                                            <td style="font-weight:900;color:var(--green)">{{ item.nutritional_info?.kcal || 0 }} kcal</td>
+                                            <td style="color:#f87171;font-weight:800">{{ item.nutritional_info?.prot || 0 }}g</td>
+                                            <td style="color:var(--yellow);font-weight:800">{{ item.nutritional_info?.carb || 0 }}g</td>
+                                            <td style="color:var(--purple);font-weight:800">{{ item.nutritional_info?.fat || 0 }}g</td>
+                                            <td style="font-weight:800">R$ {{ item.base_price?.toFixed(2).replace('.',',') }}</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <!-- ==================================================== -->
+                        <!-- VAREJO B2B: ANALYTICS & DEMANDA                      -->
+                        <!-- ==================================================== -->
+                        <div v-if="tab==='analytics' && userRole==='market'" key="analytics" class="anim-up">
+                            <div class="page-header">
+                                <div>
+                                    <div class="page-title">Data Intelligence Varejo (B2B)</div>
+                                    <div class="page-subtitle">Análise preditiva de demanda não atendida e tráfego qualificado de dietas clínicas</div>
+                                </div>
+                                <button class="btn-primary" style="width:auto;padding:10px 20px" @click="loadAnalytics">
+                                    <i class="fa-solid fa-rotate-right"></i> Atualizar Dados
+                                </button>
+                            </div>
+
+                            <div class="grid-3" style="margin-bottom:20px">
+                                <div class="card" style="padding:22px;border-top:4px solid var(--blue)">
+                                    <div style="font-size:0.72rem;font-weight:800;text-transform:uppercase;color:var(--text-dim);margin-bottom:6px">Novos Clientes Roteados (Mês)</div>
+                                    <div style="font-size:2.4rem;font-weight:900;color:var(--blue)">{{ analytics.kpis?.routed_users_month?.toLocaleString('pt-BR') || '1.245' }}</div>
+                                    <div class="chip chip-green" style="margin-top:10px">+14.2% gerado via SmartDiet</div>
+                                </div>
+                                <div class="card" style="padding:22px;border-top:4px solid var(--green)">
+                                    <div style="font-size:0.72rem;font-weight:800;text-transform:uppercase;color:var(--text-dim);margin-bottom:6px">Ticket Médio (SmartDiet)</div>
+                                    <div style="font-size:2.4rem;font-weight:900;color:var(--green)">R$ {{ Number(analytics.kpis?.avg_ticket || 214.5).toFixed(2).replace('.',',') }}</div>
+                                    <div style="font-size:0.75rem;color:var(--text-muted);margin-top:10px">Usuários gastam <strong style="color:white">30% a mais</strong> por cesta</div>
+                                </div>
+                                <div class="card" style="padding:22px;border-top:4px solid var(--orange)">
+                                    <div style="font-size:0.72rem;font-weight:800;text-transform:uppercase;color:var(--text-dim);margin-bottom:6px">Conversão de Rota</div>
+                                    <div style="font-size:2.4rem;font-weight:900;color:var(--orange)">{{ analytics.kpis?.conversion_rate || '18.5%' }}</div>
+                                    <div class="macro-bar-track" style="margin-top:14px"><div class="macro-bar-fill" style="width:18.5%;background:var(--orange)"></div></div>
+                                </div>
+                            </div>
+
+                            <div class="card" style="overflow:hidden">
+                                <div style="padding:16px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px">
+                                    <i class="fa-solid fa-radar" style="color:var(--red)"></i>
+                                    <div style="font-weight:800">Radar de Demanda Não Atendida (Ruptura de Estoque)</div>
+                                </div>
+                                <table class="app-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Produto (SKU)</th>
+                                            <th>Categoria</th>
+                                            <th style="text-align:center">Buscas Perdidas</th>
+                                            <th style="text-align:right">Prejuízo Mensal Est.</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr v-for="op in analytics.missed_opportunities" :key="op.name">
+                                            <td style="font-weight:800">{{ op.name }}</td>
+                                            <td><span class="chip chip-blue">{{ op.category }}</span></td>
+                                            <td style="text-align:center"><span class="chip chip-orange">{{ op.search_volume }} clientes</span></td>
+                                            <td style="text-align:right;font-weight:900;color:var(--red);font-size:1.05rem">R$ {{ Number(op.estimated_loss).toFixed(2).replace('.',',') }}</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <!-- ==================================================== -->
+                        <!-- VAREJO B2B: GESTÃO DE ESTOQUE                        -->
+                        <!-- ==================================================== -->
+                        <div v-if="tab==='inventory' && userRole==='market'" key="inventory" class="anim-up">
+                            <div class="page-header">
+                                <div>
+                                    <div class="page-title">Gestão de Estoque em Tempo Real</div>
+                                    <div class="page-subtitle">Atualize quantidades e preços para impactar os carrinhos dos consumidores imediatamente</div>
+                                </div>
+                                <input type="text" v-model="invFilter" placeholder="Filtrar estoque..." class="form-input" style="width:240px">
+                            </div>
+
+                            <div class="card" style="overflow:hidden">
+                                <table class="app-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Produto</th>
+                                            <th>Categoria</th>
+                                            <th style="text-align:center">Status</th>
+                                            <th style="text-align:center">Quantidade em Estoque</th>
+                                            <th style="text-align:right">Preço Atual (R$)</th>
+                                            <th style="text-align:center">Ação</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr v-for="item in filteredInventory" :key="item.product_id">
+                                            <td style="font-weight:800">{{ item.name }}</td>
+                                            <td><span class="chip chip-blue">{{ item.category }}</span></td>
+                                            <td style="text-align:center">
+                                                <span class="chip" :class="item.stock_qty > 20 ? 'chip-green' : item.stock_qty > 0 ? 'chip-orange' : 'chip-red'">
+                                                    {{ item.stock_qty > 20 ? 'Abastecido' : item.stock_qty > 0 ? 'Baixo Estoque' : 'Esgotado' }}
+                                                </span>
+                                            </td>
+                                            <td style="text-align:center">
+                                                <input type="number" class="form-input" v-model.number="item.stock_qty" min="0" style="width:80px;text-align:center;margin:0 auto">
+                                            </td>
+                                            <td style="text-align:right">
+                                                <input type="number" step="0.01" class="form-input" v-model.number="item.current_price" min="0" style="width:90px;text-align:right;margin-left:auto">
+                                            </td>
+                                            <td style="text-align:center">
+                                                <button class="btn-primary" style="width:auto;padding:6px 14px;font-size:0.75rem" @click="saveInventory(item)">Salvar</button>
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                    </transition>
+                </main>
+
+            </div>
+        </transition>
+
+        <!-- Toast de Notificação -->
+        <div v-if="toastMessage" class="toast-popup">
+            <i class="fa-solid fa-circle-check" style="color:var(--green)"></i>
+            <span>{{ toastMessage }}</span>
+        </div>
+
+    </div>
+
+    <script>
+        const API = '/api';
+        const { createApp } = Vue;
+
+        createApp({
+            data() {
+                return {
+                    route: 'login',
+                    tab: 'home',
+                    isLogging: false,
+                    loginError: '',
+                    loginForm: { email: '', password: '123456' },
+                    user: {},
+                    userRole: null,
+                    userProfile: {},
+                    toastMessage: '',
+
+                    // Consumidor
+                    restrictions: [],
+                    dietItems: [],
+                    dietPlan: null,
+                    progress: {},
+                    cartItems: [],
+                    cartFilter: '',
+                    routingResult: {},
+                    isMatching: false,
+
+                    // Nutricionista
+                    patientsList: [],
+                    selectedPatientId: 2,
+                    allTagsList: [],
+                    catalogProducts: [],
+                    catalogSearch: '',
+                    clinicalProtocols: [],
+                    currentDiet: {
+                        patient_id: 2,
+                        title: 'Plano Hipertrofia — Fase Bulking Limpo',
+                        goal: 'Hipertrofia Muscular',
+                        target_kcal: 2150,
+                        target_protein: 160,
+                        target_carbs: 220,
+                        target_fat: 65,
+                        notes: 'Foco em ganho de massa magra com controle rigoroso de glúten e lactose.',
+                        restriction_tag_ids: [1, 2, 4],
+                        meals: []
+                    },
+
+                    // Varejo B2B
+                    analytics: { kpis: {}, missed_opportunities: [] },
+                    inventory: [],
+                    invFilter: '',
+
+                    todayFormatted: new Date().toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' }),
+                };
+            },
+
+            computed: {
+                kcalPct() {
+                    const consumed = this.progress.kcal_consumed || 0;
+                    const target = this.progress.kcal_target || 2150;
+                    return Math.min(100, Math.round(consumed / target * 100));
+                },
+                cartCategories() {
+                    return [...new Set(this.cartItems.map(i => i.category))];
+                },
+                filteredCartItems() {
+                    if (!this.cartFilter) return this.cartItems;
+                    return this.cartItems.filter(i => i.category === this.cartFilter);
+                },
+                cartTotal() {
+                    return this.filteredCartItems.reduce((s, i) => s + (i.base_price || 0), 0);
+                },
+                filteredInventory() {
+                    if (!this.invFilter) return this.inventory;
+                    const q = this.invFilter.toLowerCase();
+                    return this.inventory.filter(i => i.name.toLowerCase().includes(q) || i.category.toLowerCase().includes(q));
+                },
+                filteredCatalog() {
+                    if (!this.catalogSearch) return this.catalogProducts;
+                    const q = this.catalogSearch.toLowerCase();
+                    return this.catalogProducts.filter(i => i.name.toLowerCase().includes(q) || i.category.toLowerCase().includes(q));
+                },
+                totalPrescribedKcal() {
+                    return Math.round(this.currentDiet.meals.reduce((sum, m) => {
+                        const prod = this.catalogProducts.find(p => p.id === m.recommended_product_id);
+                        const kcal = prod?.nutritional_info?.kcal || 0;
+                        return sum + (kcal * (m.qty_grams || 100) / 100);
+                    }, 0));
+                },
+                totalPrescribedProt() {
+                    return Math.round(this.currentDiet.meals.reduce((sum, m) => {
+                        const prod = this.catalogProducts.find(p => p.id === m.recommended_product_id);
+                        const prot = prod?.nutritional_info?.prot || 0;
+                        return sum + (prot * (m.qty_grams || 100) / 100);
+                    }, 0));
+                },
+                totalPrescribedCarb() {
+                    return Math.round(this.currentDiet.meals.reduce((sum, m) => {
+                        const prod = this.catalogProducts.find(p => p.id === m.recommended_product_id);
+                        const carb = prod?.nutritional_info?.carb || 0;
+                        return sum + (carb * (m.qty_grams || 100) / 100);
+                    }, 0));
+                },
+                totalPrescribedFat() {
+                    return Math.round(this.currentDiet.meals.reduce((sum, m) => {
+                        const prod = this.catalogProducts.find(p => p.id === m.recommended_product_id);
+                        const fat = prod?.nutritional_info?.fat || 0;
+                        return sum + (fat * (m.qty_grams || 100) / 100);
+                    }, 0));
+                }
+            },
+
+            methods: {
+                showToast(msg) {
+                    this.toastMessage = msg;
+                    setTimeout(() => { this.toastMessage = ''; }, 3000);
+                },
+
+                // ── AUTH ──
+                async handleLogin() {
+                    this.isLogging = true;
+                    this.loginError = '';
+                    try {
+                        const res = await fetch(`${API}/auth/login`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(this.loginForm)
+                        });
+                        const data = await res.json();
+                        if (res.ok) {
+                            this.user = data.user;
+                            this.userRole = data.user.role;
+                            if (this.userRole === 'consumer') {
+                                this.tab = 'home';
+                                await this.loadConsumerData();
+                            } else if (this.userRole === 'nutritionist') {
+                                this.tab = 'nutri_prescription';
+                                await this.loadNutritionistData();
+                            } else {
+                                this.tab = 'analytics';
+                                await this.loadAnalytics();
+                            }
+                            setTimeout(() => { this.route = 'dashboard'; this.isLogging = false; }, 400);
+                        } else {
+                            this.loginError = data.message;
+                            this.isLogging = false;
+                        }
+                    } catch (e) {
+                        this.loginError = 'Erro de conexão com o servidor.';
+                        this.isLogging = false;
+                    }
+                },
+                autoLogin(email) {
+                    this.loginForm.email = email;
+                    this.loginForm.password = '123456';
+                    this.handleLogin();
+                },
+                logout() {
+                    this.route = 'login';
+                    this.userRole = null;
+                    this.user = {};
+                    this.loginForm.email = '';
+                    this.routingResult = {};
+                },
+
+                // ── NAVEGAÇÃO ──
+                async gotoTab(t) {
+                    this.tab = t;
+                    if (this.userRole === 'consumer') {
+                        if (t === 'home') await this.loadProgress();
+                        if (t === 'diet') await this.loadDiet();
+                        if (t === 'profile') await this.loadProfile();
+                    } else if (this.userRole === 'nutritionist') {
+                        if (t === 'nutri_patients') await this.loadPatients();
+                        if (t === 'nutri_catalog') await this.loadCatalog();
+                    } else if (this.userRole === 'market') {
+                        if (t === 'analytics') await this.loadAnalytics();
+                        if (t === 'inventory') await this.loadInventory();
+                    }
+                },
+
+                // ── CONSUMER ──
+                async loadConsumerData() {
+                    await Promise.all([this.loadDiet(), this.loadProgress(), this.loadProfile()]);
+                },
+                async loadProfile() {
+                    try {
+                        const res = await fetch(`${API}/consumer/profile?user_id=${this.user.id}`);
+                        const data = await res.json();
+                        if (res.ok) {
+                            this.restrictions = data.restrictions || [];
+                            if (data.profile) {
+                                this.userProfile = {
+                                    avatar: data.profile.avatar_url,
+                                    weight_kg: data.profile.weight_kg,
+                                    height_cm: data.profile.height_cm,
+                                    goal: data.profile.goal,
+                                    name: data.user?.name
+                                };
+                            }
+                        }
+                    } catch (e) { console.error(e); }
+                },
+                async loadDiet() {
+                    try {
+                        const res = await fetch(`${API}/consumer/diet?user_id=${this.user.id}`);
+                        const data = await res.json();
+                        if (res.ok) {
+                            this.dietItems = data.diet_items || [];
+                            this.dietPlan = data.diet_plan;
+                            this.restrictions = data.restrictions || [];
+                        }
+                    } catch (e) { console.error(e); }
+                },
+                async loadProgress() {
+                    try {
+                        const res = await fetch(`${API}/consumer/progress?user_id=${this.user.id}`);
+                        if (res.ok) this.progress = await res.json();
+                    } catch (e) { console.error(e); }
+                },
+                async toggleMeal(item) {
+                    item.checked = !item.checked;
+                    try {
+                        await fetch(`${API}/consumer/meal/check`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ user_id: this.user.id, diet_item_id: item.id, checked: item.checked })
+                        });
+                        await this.loadProgress();
+                    } catch (e) { console.error(e); }
+                },
+                buildCart() {
+                    const weeklyQtyMap = {
+                        'Suplementos': '7 doses',
+                        'Carnes': '7 porções (1.2kg)',
+                        'Cereais': '1 pacote',
+                        'Laticínios': '7 unidades',
+                        'Laticínios Veganos': '4 unidades',
+                        'Vegetais': '1.5 kg',
+                        'Proteínas': '2 dúzias',
+                        'Lanches': '2 potes',
+                        'Padaria': '2 pacotes'
+                    };
+                    this.cartItems = this.dietItems
+                        .filter(i => i.recommended_product_id)
+                        .map(i => ({
+                            id: i.recommended_product_id,
+                            name: i.product_name,
+                            brand: i.product_brand || 'Marca',
+                            category: i.category,
+                            base_price: i.base_price || 0,
+                            weekly_qty: weeklyQtyMap[i.category] || '7 un.',
+                        }));
+                },
+                async runAlgorithm() {
+                    if (!this.cartItems.length) this.buildCart();
+                    this.isMatching = true;
+                    try {
+                        const ids = this.cartItems.map(i => i.id);
+                        const res = await fetch(`${API}/core/algorithm/match`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ product_ids: ids, lat: -23.585, lng: -46.678 })
+                        });
+                        this.routingResult = await res.json();
+                        setTimeout(() => { this.isMatching = false; this.tab = 'routes'; }, 1000);
+                    } catch (e) {
+                        console.error(e);
+                        this.isMatching = false;
+                    }
+                },
+
+                // ── NUTRICIONISTA ──
+                async loadNutritionistData() {
+                    await Promise.all([
+                        this.loadPatients(),
+                        this.loadTags(),
+                        this.loadCatalog(),
+                        this.loadProtocols()
+                    ]);
+                    await this.loadPatientDiet(this.selectedPatientId);
+                },
+                async loadPatients() {
+                    try {
+                        const res = await fetch(`${API}/nutritionist/patients`);
+                        const data = await res.json();
+                        if (res.ok) this.patientsList = data.patients || [];
+                    } catch (e) { console.error(e); }
+                },
+                async loadTags() {
+                    try {
+                        const res = await fetch(`${API}/tags`);
+                        const data = await res.json();
+                        if (res.ok) this.allTagsList = data.tags || [];
+                    } catch (e) { console.error(e); }
+                },
+                async loadCatalog() {
+                    try {
+                        const res = await fetch(`${API}/products/search`);
+                        const data = await res.json();
+                        if (res.ok) this.catalogProducts = data.data || [];
+                    } catch (e) { console.error(e); }
+                },
+                async loadProtocols() {
+                    try {
+                        const res = await fetch(`${API}/nutritionist/protocols`);
+                        const data = await res.json();
+                        if (res.ok) this.clinicalProtocols = data.protocols || [];
+                    } catch (e) { console.error(e); }
+                },
+                async loadPatientDiet(patientId) {
+                    this.selectedPatientId = patientId;
+                    try {
+                        const res = await fetch(`${API}/consumer/diet?user_id=${patientId}`);
+                        const data = await res.json();
+                        if (res.ok && data.diet_plan) {
+                            this.currentDiet = {
+                                patient_id: patientId,
+                                title: data.diet_plan.title,
+                                goal: this.patientsList.find(p => p.id === patientId)?.goal || 'Hipertrofia Muscular',
+                                target_kcal: data.diet_plan.target_kcal,
+                                target_protein: data.diet_plan.target_protein,
+                                target_carbs: data.diet_plan.target_carbs,
+                                target_fat: data.diet_plan.target_fat,
+                                notes: data.diet_plan.notes || '',
+                                restriction_tag_ids: (data.restrictions || []).map(r => r.id),
+                                meals: (data.diet_items || []).map(i => ({
+                                    meal_name: i.meal_name,
+                                    meal_time: i.meal_time,
+                                    recommended_product_id: i.recommended_product_id,
+                                    qty_grams: i.qty_grams
+                                }))
+                            };
+                        }
+                    } catch (e) { console.error(e); }
+                },
+                onSelectPatient() {
+                    this.loadPatientDiet(this.selectedPatientId);
+                },
+                loadPatientIntoStudio(patient) {
+                    this.selectedPatientId = patient.id;
+                    this.loadPatientDiet(patient.id);
+                    this.tab = 'nutri_prescription';
+                },
+                applyProtocol(proto) {
+                    this.currentDiet.title = proto.name;
+                    this.currentDiet.goal = proto.goal;
+                    this.currentDiet.target_kcal = proto.target_kcal;
+                    this.currentDiet.target_protein = proto.target_protein;
+                    this.currentDiet.target_carbs = proto.target_carbs;
+                    this.currentDiet.target_fat = proto.target_fat;
+                    this.currentDiet.notes = proto.notes;
+                    this.currentDiet.restriction_tag_ids = [...proto.recommended_tags];
+                    this.currentDiet.meals = proto.meals.map(m => ({
+                        meal_name: m.meal_name,
+                        meal_time: m.meal_time,
+                        recommended_product_id: m.product_id,
+                        qty_grams: m.qty_grams
+                    }));
+                    this.showToast(`Protocolo "${proto.name}" carregado no estúdio!`);
+                },
+                toggleTagSelection(tagId) {
+                    const idx = this.currentDiet.restriction_tag_ids.indexOf(tagId);
+                    if (idx > -1) {
+                        this.currentDiet.restriction_tag_ids.splice(idx, 1);
+                    } else {
+                        this.currentDiet.restriction_tag_ids.push(tagId);
+                    }
+                },
+                addNewMeal() {
+                    const defaultProdId = this.catalogProducts[0]?.id || 1;
+                    this.currentDiet.meals.push({
+                        meal_name: 'Nova Refeição',
+                        meal_time: '12:00',
+                        recommended_product_id: defaultProdId,
+                        qty_grams: 100
+                    });
+                },
+                removeMeal(index) {
+                    this.currentDiet.meals.splice(index, 1);
+                },
+                async savePrescription() {
+                    try {
+                        const payload = {
+                            patient_id: this.selectedPatientId,
+                            nutritionist_id: this.user.id || 3,
+                            title: this.currentDiet.title,
+                            goal: this.currentDiet.goal,
+                            target_kcal: this.currentDiet.target_kcal,
+                            target_protein: this.currentDiet.target_protein,
+                            target_carbs: this.currentDiet.target_carbs,
+                            target_fat: this.currentDiet.target_fat,
+                            notes: this.currentDiet.notes,
+                            restriction_tag_ids: this.currentDiet.restriction_tag_ids,
+                            meals: this.currentDiet.meals
+                        };
+
+                        const res = await fetch(`${API}/nutritionist/diet/save`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(payload)
+                        });
+                        const data = await res.json();
+                        if (res.ok) {
+                            this.showToast('✓ Dieta prescrita e sincronizada em tempo real com o paciente!');
+                            await this.loadPatients();
+                        } else {
+                            alert('Erro ao salvar dieta: ' + data.message);
+                        }
+                    } catch (e) {
+                        console.error(e);
+                        alert('Erro na requisição ao salvar prescrição.');
+                    }
+                },
+
+                // ── VAREJO B2B ──
+                async loadAnalytics() {
+                    try {
+                        const mid = this.user.id === 4 ? 1 : this.user.id === 5 ? 2 : 1;
+                        const res = await fetch(`${API}/market/analytics?market_id=${mid}`);
+                        if (res.ok) this.analytics = await res.json();
+                    } catch (e) { console.error(e); }
+                },
+                async loadInventory() {
+                    try {
+                        const mid = this.user.id === 4 ? 1 : this.user.id === 5 ? 2 : 1;
+                        const res = await fetch(`${API}/market/inventory?market_id=${mid}`);
+                        const data = await res.json();
+                        if (res.ok) this.inventory = data.data;
+                    } catch (e) { console.error(e); }
+                },
+                async saveInventory(item) {
+                    const mid = this.user.id === 4 ? 1 : this.user.id === 5 ? 2 : 1;
+                    try {
+                        const res = await fetch(`${API}/market/inventory/update`, {
+                            method: 'PUT',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ market_id: mid, product_id: item.product_id, stock_qty: item.stock_qty, current_price: item.current_price })
+                        });
+                        if (res.ok) {
+                            this.showToast(`✓ Estoque de "${item.name}" atualizado!`);
+                        }
+                    } catch (e) { console.error(e); }
+                },
+
+                // ── AUXILIARES ──
+                chipColor(c) {
+                    const map = { orange: 'chip-orange', yellow: 'chip-yellow', green: 'chip-green', blue: 'chip-blue', purple: 'chip-purple', red: 'chip-red' };
+                    return map[c] || 'chip-green';
+                }
+            }
+        }).mount('#app');
+
+        const loader = document.getElementById('boot-loader');
+        if (loader) {
+            loader.classList.add('hidden');
+            setTimeout(() => loader.remove(), 400);
+        }
+    </script>
+</body>
+</html>
