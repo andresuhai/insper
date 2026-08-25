@@ -264,22 +264,6 @@ def _seed_database(cursor):
         (15,1),(15,2),(15,3),(15,4),(15,6);
     ''')
 
-    # Mercados
-    cursor.executemany("INSERT INTO markets (id, owner_id, brand_name, branch_name, address, lat, lng, markup_multiplier) VALUES (?, ?, ?, ?, ?, ?, ?, ?)", [
-        (1, 4, 'Pão de Açúcar', 'Faria Lima',    'Av. Brig. Faria Lima, 3500', -23.585, -46.678, 1.15),
-        (2, 5, 'Mundo Verde',   'Pinheiros',     'R. dos Pinheiros, 1000',     -23.567, -46.699, 1.25),
-        (3, 4, 'Pão de Açúcar', 'Moema',         'Av. Ibirapuera, 3103',       -23.600, -46.660, 1.10),
-        (4, 5, 'Carrefour',     'Itaim',         'R. João Cachoeira, 300',     -23.580, -46.680, 0.95),
-    ])
-
-    # Inventário distribuído
-    for pid in range(1, 16):
-        cursor.execute("INSERT INTO inventory (market_id, product_id, stock_qty, current_price) VALUES (1, ?, ?, (SELECT base_price * 1.15 FROM products WHERE id = ?))", (pid, 50, pid))
-    for pid in [1, 2, 3, 5, 6, 7, 10, 11, 13, 14, 15]:
-        cursor.execute("INSERT INTO inventory (market_id, product_id, stock_qty, current_price) VALUES (2, ?, ?, (SELECT base_price * 1.25 FROM products WHERE id = ?))", (pid, 35, pid))
-    for pid in [3, 4, 5, 6, 7, 8, 9, 10, 12, 13]:
-        cursor.execute("INSERT INTO inventory (market_id, product_id, stock_qty, current_price) VALUES (4, ?, ?, (SELECT base_price * 0.95 FROM products WHERE id = ?))", (pid, 90, pid))
-
     # Dieta ativa de André Suhai (Paciente 2)
     cursor.execute("""
         INSERT INTO diets (id, patient_id, nutritionist_id, title, target_kcal, target_protein, target_carbs, target_fat, notes)
@@ -696,8 +680,13 @@ def optimize_smart_cart():
         return jsonify({'status': 'error', 'message': 'Lista vazia'}), 400
 
     db = get_db()
-    db.row_factory = dict_factory
-    markets = db.execute("SELECT * FROM markets WHERE is_active = 1").fetchall()
+    # Apenas mercados reais que possuem inventário coletado via API
+    markets = db.execute("""
+        SELECT DISTINCT m.* 
+        FROM markets m 
+        JOIN inventory i ON m.id = i.market_id 
+        WHERE m.is_active = 1
+    """).fetchall()
     results = []
 
     for m in markets:
@@ -732,7 +721,9 @@ def optimize_smart_cart():
                     missing_items.append({'product_id': pid, 'name': prod['name']})
 
         match_percentage = int((found_items / len(product_ids)) * 100) if product_ids else 0
-        dist_km = round(math.sqrt((m['lat'] - user_lat)**2 + (m['lng'] - user_lng)**2) * 111, 1)
+        m_lat = m['lat'] if m['lat'] is not None else -23.585
+        m_lng = m['lng'] if m['lng'] is not None else -46.678
+        dist_km = round(math.sqrt((m_lat - user_lat)**2 + (m_lng - user_lng)**2) * 111, 1)
 
         results.append({
             'market_id': market_id,
