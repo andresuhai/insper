@@ -8,6 +8,8 @@
 
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/vue@3/dist/vue.global.prod.js"></script>
 
     <style>
@@ -237,19 +239,524 @@
         .app-table td { padding: 12px 14px; border-bottom: 1px solid rgba(255, 255, 255, 0.04); font-size: 0.85rem; vertical-align: middle; }
         .app-table tr:hover td { background: rgba(255, 255, 255, 0.02); }
 
-        /* ROUTING */
+        /* ROUTING & LOCATION */
+        .loc-banner {
+            background: linear-gradient(135deg, rgba(22, 196, 127, 0.09) 0%, rgba(56, 189, 248, 0.07) 100%), var(--surface);
+            border: 1px solid rgba(22, 196, 127, 0.28);
+            border-radius: var(--radius-xl);
+            padding: 16px 20px;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 14px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.35);
+        }
+        .loc-pin-icon {
+            width: 44px;
+            height: 44px;
+            border-radius: 12px;
+            background: var(--green-dim);
+            color: var(--green);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.25rem;
+            position: relative;
+            flex-shrink: 0;
+        }
+        .loc-btn {
+            padding: 8px 14px;
+            border-radius: 10px;
+            font-size: 0.78rem;
+            font-weight: 700;
+            cursor: pointer;
+            border: 1px solid var(--border2);
+            background: var(--surface2);
+            color: var(--text);
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            transition: all 0.2s ease;
+        }
+        .loc-btn:hover {
+            border-color: var(--green);
+            color: var(--green);
+            transform: translateY(-1px);
+        }
+        .loc-btn-primary {
+            background: var(--green);
+            color: #060B14;
+            border-color: var(--green);
+            font-weight: 800;
+        }
+        .loc-btn-primary:hover {
+            background: #19db8f;
+            color: #060B14;
+            box-shadow: 0 0 20px var(--green-glow);
+        }
+        .loc-chip {
+            padding: 6px 12px;
+            border-radius: 8px;
+            font-size: 0.72rem;
+            font-weight: 700;
+            cursor: pointer;
+            border: 1px solid var(--border);
+            background: rgba(255, 255, 255, 0.03);
+            color: var(--text-muted);
+            transition: all 0.15s ease;
+        }
+        .loc-chip:hover, .loc-chip.active {
+            background: var(--blue-dim);
+            border-color: var(--blue);
+            color: var(--blue);
+        }
+
         .route-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-xl); padding: 20px; position: relative; transition: all 0.2s; }
         .route-card.best { border-color: var(--green); box-shadow: 0 0 30px rgba(22, 196, 127, 0.15); }
+        .route-card.selected { border-color: var(--blue); box-shadow: 0 0 30px rgba(56, 189, 248, 0.25); background: rgba(14, 27, 50, 0.98); }
         .best-badge { position: absolute; top: -10px; right: 20px; background: var(--green); color: white; font-size: 0.65rem; font-weight: 800; padding: 4px 12px; border-radius: 999px; text-transform: uppercase; letter-spacing: 0.1em; }
+        .selected-badge { position: absolute; top: -10px; right: 20px; background: var(--blue); color: #060B14; font-size: 0.65rem; font-weight: 800; padding: 4px 12px; border-radius: 999px; text-transform: uppercase; letter-spacing: 0.1em; }
 
-        .map-visual {
-            background-image: url('https://images.unsplash.com/photo-1524661135-423995f22d0b?auto=format&fit=crop&q=80&w=1200');
-            background-size: cover; background-position: center; border-radius: var(--radius-xl); position: relative; overflow: hidden; min-height: 280px;
+        /* REAL LEAFLET MAP & ROUTE STYLES */
+        .leaflet-container {
+            font-family: 'Inter', sans-serif !important;
+            background: #0C1524 !important;
+            border-radius: inherit;
         }
-        .map-overlay { position: absolute; inset: 0; background: rgba(6, 11, 20, 0.6); }
-        .map-pin { position: absolute; top: 48%; left: 50%; transform: translate(-50%, -50%); display: flex; flex-direction: column; align-items: center; }
-        .map-pin-label { background: var(--green); color: white; font-size: 0.8rem; font-weight: 800; padding: 8px 14px; border-radius: 12px; white-space: nowrap; box-shadow: 0 4px 20px var(--green-glow); animation: float 2.5s ease-in-out infinite; }
-        .map-ping { position: absolute; top: 48%; left: 50%; transform: translate(-50%, -50%); width: 80px; height: 80px; background: var(--green-glow); border-radius: 50%; animation: spin 4s linear infinite; }
+        #realRouteMap {
+            width: 100%;
+            height: 220px;
+            min-height: 220px;
+            border-radius: var(--radius-xl);
+            border: 1px solid var(--border2);
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.4);
+            z-index: 5;
+            position: relative;
+            display: block;
+        }
+        #cartPreviewMap {
+            width: 100%;
+            height: 190px;
+            min-height: 190px;
+            border-radius: var(--radius-xl);
+            border: 1px solid var(--border2);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+            z-index: 5;
+            position: relative;
+            display: block;
+        }
+        .leaflet-popup-content-wrapper {
+            background: rgba(14, 27, 50, 0.95) !important;
+            backdrop-filter: blur(12px) !important;
+            -webkit-backdrop-filter: blur(12px) !important;
+            color: var(--text) !important;
+            border: 1px solid var(--border2) !important;
+            border-radius: 14px !important;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5) !important;
+            padding: 4px;
+        }
+        .leaflet-popup-content {
+            margin: 12px 14px !important;
+            line-height: 1.4 !important;
+        }
+        .leaflet-popup-tip {
+            background: rgba(14, 27, 50, 0.95) !important;
+        }
+        .custom-user-marker {
+            width: 34px;
+            height: 34px;
+            border-radius: 50%;
+            background: var(--blue);
+            border: 3px solid white;
+            box-shadow: 0 0 24px rgba(56, 189, 248, 0.9);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #060B14;
+            font-size: 0.85rem;
+            animation: pulse-glow 2s infinite;
+        }
+        .custom-market-marker {
+            width: 38px;
+            height: 38px;
+            border-radius: 12px;
+            background: var(--green);
+            border: 3px solid #060B14;
+            box-shadow: 0 0 20px var(--green-glow);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #060B14;
+            font-size: 1.05rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        .custom-market-marker.selected {
+            background: #FACC15;
+            box-shadow: 0 0 25px rgba(250, 204, 21, 0.7);
+            transform: scale(1.15);
+        }
+        .custom-market-marker:hover {
+            transform: scale(1.2);
+        }
+
+        /* TURN-BY-TURN & ROUTE GUIDE */
+        .route-guide-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-xl);
+            padding: 20px;
+        }
+        .route-mode-pill {
+            flex: 1;
+            padding: 10px 8px;
+            border-radius: 12px;
+            background: var(--surface2);
+            border: 1px solid var(--border);
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 2px;
+        }
+        .route-step-row {
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            padding: 10px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            font-size: 0.82rem;
+        }
+        .route-step-icon {
+            width: 26px;
+            height: 26px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.06);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.72rem;
+            color: var(--green);
+            flex-shrink: 0;
+            margin-top: 2px;
+        }
+        .nav-app-btn {
+            flex: 1;
+            padding: 11px 14px;
+            border-radius: 12px;
+            font-size: 0.82rem;
+            font-weight: 800;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            transition: all 0.2s ease;
+            text-decoration: none;
+            border: 1px solid transparent;
+        }
+        .nav-app-google {
+            background: rgba(66, 133, 244, 0.15);
+            border-color: rgba(66, 133, 244, 0.4);
+            color: #60a5fa;
+        }
+        .nav-app-google:hover {
+            background: rgba(66, 133, 244, 0.28);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(66, 133, 244, 0.3);
+        }
+        .nav-app-waze {
+            background: rgba(56, 189, 248, 0.15);
+            border-color: rgba(56, 189, 248, 0.4);
+            color: #38bdf8;
+        }
+        .nav-app-waze:hover {
+            background: rgba(56, 189, 248, 0.28);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(56, 189, 248, 0.3);
+        }
+
+        /* FULFILLMENT TOGGLE & DELIVERY SIMULATOR STYLES */
+        .fulfillment-toggle {
+            display: flex;
+            background: var(--surface2);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            padding: 4px;
+            gap: 4px;
+            margin-bottom: 16px;
+        }
+        .fulfillment-tab {
+            flex: 1;
+            padding: 10px 14px;
+            border-radius: 10px;
+            font-size: 0.82rem;
+            font-weight: 800;
+            cursor: pointer;
+            border: none;
+            background: transparent;
+            color: var(--text-muted);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            transition: all 0.2s ease;
+        }
+        .fulfillment-tab.active {
+            background: var(--green);
+            color: #060B14;
+            box-shadow: 0 4px 15px rgba(22, 196, 127, 0.4);
+        }
+        .delivery-summary-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-xl);
+            padding: 20px;
+        }
+        .delivery-btn-cta {
+            width: 100%;
+            padding: 16px 20px;
+            border-radius: 14px;
+            background: linear-gradient(135deg, #16C47F 0%, #059669 100%);
+            color: #060B14;
+            font-weight: 900;
+            font-size: 1.05rem;
+            border: none;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            box-shadow: 0 8px 30px rgba(22, 196, 127, 0.35);
+            transition: all 0.25s ease;
+        }
+        .delivery-btn-cta:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 12px 35px rgba(22, 196, 127, 0.5);
+            filter: brightness(1.08);
+        }
+        .delivery-modal-backdrop {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(6, 11, 20, 0.85);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+            padding: 20px;
+        }
+        .delivery-modal-content {
+            background: #0C1524;
+            border: 1px solid var(--green);
+            box-shadow: 0 25px 60px rgba(0, 0, 0, 0.8), 0 0 40px rgba(22, 196, 127, 0.2);
+            border-radius: 24px;
+            width: 100%;
+            max-width: 580px;
+            max-height: 90vh;
+            overflow-y: auto;
+            padding: 28px;
+            position: relative;
+        }
+        .tracker-progress-track {
+            height: 8px;
+            background: rgba(255, 255, 255, 0.08);
+            border-radius: 999px;
+            overflow: hidden;
+            margin: 20px 0;
+            position: relative;
+        }
+        .tracker-progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #16C47F, #38BDF8);
+            border-radius: 999px;
+            transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .tracker-step-row {
+            display: flex;
+            align-items: flex-start;
+            gap: 14px;
+            padding: 12px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            transition: all 0.3s ease;
+        }
+        .tracker-step-badge {
+            width: 34px;
+            height: 34px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.9rem;
+            flex-shrink: 0;
+            transition: all 0.3s ease;
+        }
+        .tracker-step-badge.pending {
+            background: rgba(255, 255, 255, 0.06);
+            color: var(--text-dim);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .tracker-step-badge.active {
+            background: var(--green);
+            color: #060B14;
+            box-shadow: 0 0 20px var(--green-glow);
+            animation: pulse-glow 1.5s infinite;
+        }
+        .tracker-step-badge.done {
+            background: rgba(22, 196, 127, 0.2);
+            color: var(--green);
+            border: 1px solid var(--green);
+        }
+
+        /* ==================================================== */
+        /* CHECKOUT & PAYMENT INTERACTIVE MODAL STYLES          */
+        /* ==================================================== */
+        .checkout-modal-backdrop {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(6, 11, 20, 0.88);
+            backdrop-filter: blur(14px);
+            -webkit-backdrop-filter: blur(14px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 99999;
+            padding: 16px;
+        }
+        .checkout-modal-content {
+            background: #0C1524;
+            border: 1px solid rgba(22, 196, 127, 0.4);
+            box-shadow: 0 30px 80px rgba(0, 0, 0, 0.9), 0 0 50px rgba(22, 196, 127, 0.25);
+            border-radius: 24px;
+            width: 100%;
+            max-width: 760px;
+            max-height: 92vh;
+            overflow-y: auto;
+            padding: 26px;
+            position: relative;
+        }
+        .payment-methods-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        .payment-tab-btn {
+            padding: 12px 10px;
+            border-radius: 14px;
+            background: var(--surface2);
+            border: 1px solid var(--border);
+            color: var(--text-muted);
+            font-size: 0.8rem;
+            font-weight: 800;
+            cursor: pointer;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 6px;
+            transition: all 0.2s ease;
+        }
+        .payment-tab-btn i {
+            font-size: 1.3rem;
+        }
+        .payment-tab-btn:hover {
+            border-color: var(--green);
+            color: var(--text);
+            transform: translateY(-2px);
+        }
+        .payment-tab-btn.active {
+            background: rgba(22, 196, 127, 0.18);
+            border-color: var(--green);
+            color: var(--green);
+            box-shadow: 0 0 20px rgba(22, 196, 127, 0.3);
+        }
+
+        /* 3D CREDIT CARD PREVIEW */
+        .credit-card-3d {
+            background: linear-gradient(135deg, #1e3a8a 0%, #0f172a 45%, #064e3b 100%);
+            border-radius: 18px;
+            padding: 22px 24px;
+            color: white;
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.5), inset 0 0 20px rgba(255, 255, 255, 0.05);
+            margin-bottom: 18px;
+            position: relative;
+            overflow: hidden;
+        }
+        .credit-card-3d::after {
+            content: '';
+            position: absolute;
+            top: -50%; right: -50%;
+            width: 200%; height: 200%;
+            background: radial-gradient(circle, rgba(255,255,255,0.08) 0%, transparent 60%);
+            pointer-events: none;
+        }
+        .card-chip {
+            width: 38px;
+            height: 28px;
+            border-radius: 6px;
+            background: linear-gradient(135deg, #facc15 0%, #eab308 100%);
+            border: 1px solid rgba(0, 0, 0, 0.2);
+            display: inline-block;
+        }
+
+        /* PIX BOX */
+        .pix-box-wrap {
+            background: var(--surface2);
+            border: 1px solid rgba(56, 189, 248, 0.3);
+            border-radius: 16px;
+            padding: 20px;
+            text-align: center;
+            margin-bottom: 18px;
+        }
+        .pix-qr-frame {
+            width: 170px;
+            height: 170px;
+            margin: 0 auto 14px;
+            background: white;
+            padding: 10px;
+            border-radius: 14px;
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.4);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .pix-copy-row {
+            display: flex;
+            gap: 8px;
+            background: rgba(0, 0, 0, 0.35);
+            border: 1px solid var(--border2);
+            border-radius: 10px;
+            padding: 6px 10px;
+            align-items: center;
+            max-width: 480px;
+            margin: 0 auto;
+        }
+
+        /* COUPON CHIP */
+        .coupon-tag {
+            padding: 5px 10px;
+            border-radius: 8px;
+            background: rgba(22, 196, 127, 0.12);
+            border: 1px dashed var(--green);
+            color: var(--green);
+            font-size: 0.72rem;
+            font-weight: 800;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        .coupon-tag:hover {
+            background: var(--green);
+            color: #060B14;
+            transform: scale(1.05);
+        }
+        /* RADAR SCAN BOX */
+        .radar-step-box {
+            background: var(--surface2); border: 1px solid rgba(22, 196, 127, 0.3); border-radius: 14px; padding: 16px 20px; display: flex; align-items: center; gap: 14px; margin-top: 16px; animation: pulse-glow 2s infinite;
+        }
 
         /* TOAST */
         .toast-popup { position: fixed; bottom: 24px; right: 24px; padding: 14px 20px; border-radius: 14px; background: rgba(14, 27, 50, 0.95); border: 1px solid var(--green); color: white; font-size: 0.88rem; font-weight: 700; display: flex; align-items: center; gap: 10px; box-shadow: 0 10px 40px rgba(0, 0, 0, 0.6); z-index: 1000; animation: fadeSlideUp 0.3s ease forwards; }
@@ -428,12 +935,12 @@
                     <!-- 2. Menu da Nutricionista (Dra. Sarah) -->
                     <div v-if="userRole === 'nutritionist'" class="sidebar-section">
                         <div class="sidebar-label">Prescrição Clínica</div>
-                        <button class="nav-btn" :class="tab==='nutri_prescription' ? 'active-purple' : ''" @click="gotoTab('nutri_prescription')">
+                        <button class="nav-btn" :class="(tab==='nutri_prescription' || (tab!=='nutri_patients' && tab!=='nutri_catalog')) ? 'active-purple' : ''" @click="gotoTab('nutri_prescription')">
                             <span class="nav-icon"><i class="fa-solid fa-wand-magic-sparkles"></i></span> Prescrição & Dieta
                         </button>
                         <button class="nav-btn" :class="tab==='nutri_patients' ? 'active-purple' : ''" @click="gotoTab('nutri_patients')">
                             <span class="nav-icon"><i class="fa-solid fa-users"></i></span> Meus Pacientes
-                            <span class="nav-badge" style="background:var(--purple)">{{ patientsList.length }}</span>
+                            <span class="nav-badge" style="background:var(--purple)">{{ (patientsList || []).length }}</span>
                         </button>
                         <button class="nav-btn" :class="tab==='nutri_catalog' ? 'active-purple' : ''" @click="gotoTab('nutri_catalog')">
                             <span class="nav-icon"><i class="fa-solid fa-bowl-food"></i></span> Banco de Alimentos
@@ -469,12 +976,11 @@
 
                 <!-- ÁREA PRINCIPAL -->
                 <main class="main-content">
-                    <transition name="fade" mode="out-in">
 
-                        <!-- ==================================================== -->
-                        <!-- CONSUMIDOR: HOME / RESUMO DO DIA                      -->
-                        <!-- ==================================================== -->
-                        <div v-if="tab==='home' && userRole==='consumer'" key="home" class="anim-up">
+                    <!-- ==================================================== -->
+                    <!-- CONSUMIDOR: HOME / RESUMO DO DIA                      -->
+                    <!-- ==================================================== -->
+                    <div v-if="tab==='home' && userRole==='consumer'" key="home" class="anim-up">
                             <div class="page-header">
                                 <div>
                                     <div class="page-title">Olá, {{ user.name?.split(' ')[0] }}! 👋</div>
@@ -621,6 +1127,70 @@
                         <!-- CONSUMIDOR: LISTA INTELIGENTE                        -->
                         <!-- ==================================================== -->
                         <div v-if="tab==='cart' && userRole==='consumer'" key="cart" class="anim-up">
+                            <!-- BARRA DE LOCALIZAÇÃO DO CONSUMIDOR -->
+                            <div class="loc-banner">
+                                <div class="flex items-center gap-12" style="flex:1;min-width:260px">
+                                    <div class="loc-pin-icon">
+                                        <div class="loc-pin-pulse"></div>
+                                        <i class="fa-solid fa-location-dot"></i>
+                                    </div>
+                                    <div>
+                                        <div style="font-size:0.68rem;font-weight:800;text-transform:uppercase;letter-spacing:0.08em;color:var(--green);display:flex;align-items:center;gap:6px">
+                                            <span>Endereço de Entrega & Cotação</span>
+                                            <span v-if="locationSource==='gps'" class="chip chip-green" style="padding:2px 8px;font-size:0.6rem"><i class="fa-solid fa-satellite-dish"></i> GPS Ativo</span>
+                                            <span v-else class="chip chip-blue" style="padding:2px 8px;font-size:0.6rem"><i class="fa-solid fa-map-pin"></i> CEP: {{ currentCep || '04538-133' }}</span>
+                                        </div>
+                                        <div style="font-size:0.98rem;font-weight:900;color:var(--text);margin-top:2px">{{ currentAddress || 'Rua Tabapuã, 1123 - Itaim Bibi, São Paulo - SP' }}</div>
+                                        <div style="font-size:0.75rem;color:var(--text-muted)">Os preços e estoques dos itens serão pesquisados especificamente para esta localidade.</div>
+                                    </div>
+                                </div>
+
+                                <div class="flex items-center gap-8 flex-wrap">
+                                    <button class="loc-btn loc-btn-primary" @click="fetchUserGPS(true)" title="Usar localização do GPS do navegador">
+                                        <div v-if="isLocating" class="spinner" style="width:14px;height:14px"></div>
+                                        <i v-else class="fa-solid fa-crosshairs"></i>
+                                        <span>Buscar Meu GPS</span>
+                                    </button>
+                                    <button class="loc-btn" @click="openLocationModal">
+                                        <i class="fa-solid fa-pen-to-square"></i> Alterar Endereço
+                                    </button>
+                                </div>
+
+                                <!-- Quick Presets -->
+                                <div style="width:100%;display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding-top:10px;border-top:1px solid rgba(255,255,255,0.06)">
+                                    <span style="font-size:0.68rem;font-weight:800;color:var(--text-dim);text-transform:uppercase">Regiões Rápidas SP:</span>
+                                    <button v-for="p in locationPresets" :key="p.cep" class="loc-chip" :class="currentCep?.replace('-','').startsWith(p.cep.replace('-','').slice(0,3)) ? 'active' : ''" @click="applyLocationPreset(p, false)">
+                                        📍 {{ p.name }}
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- PREVIEW DO MAPA REAL & COBERTURA DE SUPERMERCADOS -->
+                            <div class="card" style="padding:16px 20px;margin-bottom:20px">
+                                <div class="flex items-center justify-between" style="margin-bottom:12px">
+                                    <div class="flex items-center gap-8">
+                                        <div style="width:32px;height:32px;border-radius:8px;background:var(--green-dim);color:var(--green);display:flex;align-items:center;justify-content:center;font-size:0.95rem">
+                                            <i class="fa-solid fa-map-location-dot"></i>
+                                        </div>
+                                        <div>
+                                            <div style="font-weight:800;font-size:0.92rem">Preview da Sua Localização & Cobertura de Lojas</div>
+                                            <div style="font-size:0.75rem;color:var(--text-muted)">Visualização em tempo real das filiais que cobrem o seu endereço em São Paulo</div>
+                                        </div>
+                                    </div>
+                                    <span class="chip chip-green" style="font-size:0.68rem">
+                                        <i class="fa-solid fa-satellite-dish"></i> GPS Conectado
+                                    </span>
+                                </div>
+
+                                <div style="position:relative">
+                                    <div id="cartPreviewMap"></div>
+                                    <div style="position:absolute;bottom:12px;left:12px;background:rgba(14,27,50,0.92);border:1px solid var(--green);color:white;padding:6px 14px;border-radius:10px;font-size:0.72rem;font-weight:700;z-index:999;backdrop-filter:blur(8px);box-shadow:0 4px 15px rgba(0,0,0,0.5)">
+                                        <i class="fa-solid fa-house-user" style="color:var(--blue);margin-right:6px"></i>
+                                        <span>{{ currentAddress?.split('-')[0] || 'Localização Detectada' }}</span>
+                                    </div>
+                                </div>
+                            </div>
+
                             <div class="page-header">
                                 <div>
                                     <div class="page-title">Lista Inteligente de Compras</div>
@@ -651,15 +1221,24 @@
                                 </div>
                             </div>
 
+                            <!-- Feedback de Carregamento em Etapas -->
+                            <div v-if="isMatching" class="card radar-step-box" style="margin-bottom:16px">
+                                <div class="spinner" style="border-top-color:var(--green)"></div>
+                                <div>
+                                    <div style="font-weight:900;font-size:0.95rem;color:var(--green)">{{ matchingStep || 'Buscando localização e pesquisando estoques...' }}</div>
+                                    <div style="font-size:0.75rem;color:var(--text-muted)">Consultando filiais e preços para: <strong style="color:var(--text)">{{ currentAddress }}</strong></div>
+                                </div>
+                            </div>
+
                             <!-- Total & Algoritmo -->
                             <div class="card" style="padding:20px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:16px">
                                 <div>
                                     <div style="font-size:0.72rem;font-weight:800;text-transform:uppercase;color:var(--text-dim);margin-bottom:2px">Custo Base da Cesta</div>
                                     <div style="font-size:1.8rem;font-weight:900" class="text-gradient">R$ {{ cartTotal.toFixed(2).replace('.',',') }}</div>
                                 </div>
-                                <button class="btn-primary" style="width:auto;padding:14px 28px" @click="runAlgorithm">
+                                <button class="btn-primary" style="width:auto;padding:14px 28px" @click="runAlgorithm" :disabled="isMatching">
                                     <div v-if="isMatching" class="spinner"></div>
-                                    <span v-else><i class="fa-solid fa-radar"></i> Cruzar com Estoques dos Supermercados</span>
+                                    <span v-else><i class="fa-solid fa-radar"></i> Selecionar Mercado & Cotar no Meu Endereço</span>
                                 </button>
                             </div>
                         </div>
@@ -668,10 +1247,47 @@
                         <!-- CONSUMIDOR: ROTAS & MERCADOS                         -->
                         <!-- ==================================================== -->
                         <div v-if="tab==='routes' && userRole==='consumer'" key="routes" class="anim-up">
+                            <!-- BARRA DE LOCALIZAÇÃO DO CONSUMIDOR NA TELA DE ROTAS -->
+                            <div class="loc-banner">
+                                <div class="flex items-center gap-12" style="flex:1;min-width:260px">
+                                    <div class="loc-pin-icon">
+                                        <div class="loc-pin-pulse"></div>
+                                        <i class="fa-solid fa-location-dot"></i>
+                                    </div>
+                                    <div>
+                                        <div style="font-size:0.68rem;font-weight:800;text-transform:uppercase;letter-spacing:0.08em;color:var(--green);display:flex;align-items:center;gap:6px">
+                                            <span>Mercados Atendentes para o Endereço</span>
+                                            <span class="chip chip-green" style="padding:2px 8px;font-size:0.6rem">
+                                                <i :class="locationSource==='gps' ? 'fa-solid fa-satellite-dish' : 'fa-solid fa-map-pin'"></i>
+                                                {{ locationSource==='gps' ? 'GPS Ao Vivo' : currentCep }}
+                                            </span>
+                                        </div>
+                                        <div style="font-size:0.98rem;font-weight:900;color:var(--text);margin-top:2px">{{ currentAddress || 'Rua Tabapuã, 1123 - Itaim Bibi, São Paulo - SP' }}</div>
+                                        <div style="font-size:0.75rem;color:var(--text-muted)">Distâncias e disponibilidade calculadas em tempo real a partir deste ponto.</div>
+                                    </div>
+                                </div>
+
+                                <div class="flex items-center gap-8 flex-wrap">
+                                    <button class="loc-btn loc-btn-primary" @click="fetchUserGPS(true)" title="Recalcular rotas com GPS">
+                                        <div v-if="isLocating" class="spinner" style="width:14px;height:14px"></div>
+                                        <i v-else class="fa-solid fa-crosshairs"></i>
+                                        <span>Atualizar GPS</span>
+                                    </button>
+                                    <button class="loc-btn" @click="openLocationModal">
+                                        <i class="fa-solid fa-pen-to-square"></i> Mudar Endereço
+                                    </button>
+                                </div>
+                            </div>
+
                             <div class="page-header">
                                 <div>
-                                    <div class="page-title">Melhores Rotas & Mercados</div>
-                                    <div class="page-subtitle">{{ routingResult.analyzed_markets || 4 }} supermercados analisados na sua vizinhança</div>
+                                    <div class="page-title">Supermercados & Cotações no Seu Endereço</div>
+                                    <div class="page-subtitle">{{ routingResult.analyzed_markets || 6 }} supermercados e filiais físicas mapeados na sua região</div>
+                                </div>
+                                <div class="flex gap-8">
+                                    <button class="btn-primary" style="width:auto;padding:10px 18px;background:var(--surface2);border:1px solid var(--border2)" @click="runAlgorithm">
+                                        <i class="fa-solid fa-rotate"></i> Recotar Agora
+                                    </button>
                                 </div>
                             </div>
 
@@ -681,27 +1297,34 @@
                                 <button class="btn-primary" style="width:auto;margin:20px auto 0;padding:12px 24px" @click="buildCart();runAlgorithm()">Executar Cruzamento Agora</button>
                             </div>
 
-                            <div v-else style="display:grid;grid-template-columns:1fr 1fr;gap:20px;align-items:start">
-                                <div style="display:flex;flex-direction:column;gap:14px">
-                                    <div v-for="(r, idx) in routingResult.routes" :key="r.market_id" class="route-card" :class="idx===0 ? 'best' : ''">
-                                        <div v-if="idx===0" class="best-badge">🏆 Recomendação IA (Melhor Rota)</div>
-                                        <div class="flex items-center justify-between" style="margin-bottom:12px">
+                            <div v-else style="display:grid;grid-template-columns:1.2fr 0.8fr;gap:20px;align-items:start">
+                                <!-- Lista de Mercados -->
+                                <div style="display:flex;flex-direction:column;gap:16px">
+                                    <div v-for="(r, idx) in routingResult.routes" :key="r.market_id" class="route-card" :class="[idx===0 ? 'best' : '', selectedMarketId === r.market_id ? 'selected' : '']">
+                                        <div v-if="idx===0 && selectedMarketId !== r.market_id" class="best-badge">🏆 Recomendação IA (Melhor Rota)</div>
+                                        <div v-if="selectedMarketId === r.market_id" class="selected-badge">✓ Mercado Selecionado</div>
+                                        
+                                        <div class="flex items-center justify-between" style="margin-bottom:14px;flex-wrap:wrap;gap:10px">
                                             <div class="flex items-center gap-12">
-                                                <div style="width:44px;height:44px;border-radius:12px;background:var(--surface2);display:flex;align-items:center;justify-content:center;font-size:1.1rem" :style="{color: idx===0 ? 'var(--green)' : 'var(--text-muted)'}">
-                                                    <i class="fa-solid fa-store"></i>
+                                                <div style="width:48px;height:48px;border-radius:14px;background:var(--surface2);display:flex;align-items:center;justify-content:center;font-size:1.3rem" :style="{color: idx===0 ? 'var(--green)' : 'var(--text-muted)'}">
+                                                    <i :class="r.brand.includes('Minuto') ? 'fa-solid fa-bolt' : 'fa-solid fa-store'"></i>
                                                 </div>
                                                 <div>
-                                                    <div style="font-weight:900;font-size:1.05rem">{{ r.brand }}</div>
-                                                    <div style="font-size:0.75rem;color:var(--text-muted)"><i class="fa-solid fa-location-dot"></i> {{ r.branch }} · {{ r.distance_km }} km de você</div>
+                                                    <div style="font-weight:900;font-size:1.1rem">{{ r.brand }} <span style="font-size:0.85rem;color:var(--text-muted)">({{ r.branch }})</span></div>
+                                                    <div style="font-size:0.75rem;color:var(--text-muted)"><i class="fa-solid fa-location-dot"></i> {{ r.address }}</div>
+                                                    <div style="font-size:0.75rem;color:var(--blue);font-weight:700;margin-top:2px">
+                                                        <i class="fa-solid fa-route"></i> {{ r.distance_km }} km de você · ~{{ r.travel_time_min }} min de entrega
+                                                    </div>
                                                 </div>
                                             </div>
                                             <div style="text-align:right">
-                                                <div style="font-size:1.4rem;font-weight:900" :style="{color: idx===0 ? 'var(--green)' : 'var(--text)'}">R$ {{ r.total_price.toFixed(2).replace('.',',') }}</div>
-                                                <div style="font-size:0.7rem;color:var(--text-muted)">total da cesta</div>
+                                                <div style="font-size:1.5rem;font-weight:900" :style="{color: idx===0 ? 'var(--green)' : 'var(--text)'}">R$ {{ r.total_price.toFixed(2).replace('.',',') }}</div>
+                                                <div style="font-size:0.7rem;color:var(--text-muted)">total da cesta cotada</div>
                                             </div>
                                         </div>
 
-                                        <div style="margin-bottom:10px">
+                                        <!-- Barra de Disponibilidade -->
+                                        <div style="margin-bottom:12px">
                                             <div style="display:flex;justify-content:space-between;font-size:0.75rem;font-weight:700;margin-bottom:4px">
                                                 <span>Disponibilidade do Estoque</span>
                                                 <span :style="{color: r.match_score>=90 ? 'var(--green)' : r.match_score>=70 ? 'var(--yellow)' : 'var(--red)'}">{{ r.match_score }}% dos itens</span>
@@ -711,19 +1334,580 @@
                                             </div>
                                         </div>
 
-                                        <div style="display:flex;gap:8px;font-size:0.75rem;font-weight:700;flex-wrap:wrap">
-                                            <span class="chip chip-green"><i class="fa-solid fa-check"></i> {{ r.items_found }} itens disponíveis</span>
-                                            <span v-if="r.items_missing?.length" class="chip chip-red"><i class="fa-solid fa-xmark"></i> {{ r.items_missing.length }} em falta</span>
+                                        <!-- Tags e Botões -->
+                                        <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px">
+                                            <div style="display:flex;gap:8px;font-size:0.75rem;font-weight:700;flex-wrap:wrap">
+                                                <span class="chip chip-green"><i class="fa-solid fa-check"></i> {{ r.items_found }} disponíveis</span>
+                                                <span v-if="r.items_missing?.length" class="chip chip-red"><i class="fa-solid fa-xmark"></i> {{ r.items_missing.length }} em falta</span>
+                                                <span v-if="r.is_direct_delivery" class="chip chip-blue"><i class="fa-solid fa-truck-fast"></i> Entrega Direta ao CEP</span>
+                                            </div>
+
+                                            <div style="display:flex;gap:8px;flex-wrap:wrap">
+                                                <button class="loc-btn" @click="toggleMarketExpand(r.market_id)">
+                                                    <i class="fa-solid" :class="expandedMarketId===r.market_id ? 'fa-chevron-up' : 'fa-list-check'"></i>
+                                                    {{ expandedMarketId===r.market_id ? 'Ocultar' : 'Ver Itens' }}
+                                                </button>
+                                                <button class="loc-btn" :class="selectedMarketId===r.market_id ? 'loc-btn-primary' : ''" @click="selectMarket(r)">
+                                                    <i class="fa-solid" :class="selectedMarketId===r.market_id ? 'fa-check' : 'fa-store'"></i>
+                                                    {{ selectedMarketId===r.market_id ? 'Selecionado' : 'Ver no Mapa' }}
+                                                </button>
+                                                <button class="loc-btn loc-btn-primary" style="background:linear-gradient(135deg,#16C47F,#059669);color:#060B14;border:none" @click="openCheckoutModal(r)">
+                                                    <i class="fa-solid fa-credit-card"></i> Comprar & Receber
+                                                </button>
+                                            </div>
+                                        </div>
+
+                                        <!-- Detalhamento de Itens Expansível -->
+                                        <div v-if="expandedMarketId === r.market_id" class="receipt-table anim-up">
+                                            <div style="font-size:0.72rem;font-weight:800;text-transform:uppercase;color:var(--text-dim);margin-bottom:8px">Itens Cotados nesta Filial (Estoque em Tempo Real):</div>
+                                            <div v-for="det in r.cart_details" :key="det.product_id" class="receipt-row">
+                                                <div class="flex items-center gap-8">
+                                                    <i class="fa-solid" :class="det.status==='available' ? 'fa-circle-check' : 'fa-circle-xmark'" :style="{color: det.status==='available' ? 'var(--green)' : 'var(--red)'}"></i>
+                                                    <div>
+                                                        <span style="font-weight:700">{{ det.name }}</span>
+                                                        <span style="color:var(--text-muted);font-size:0.7rem;margin-left:6px">({{ det.category }})</span>
+                                                    </div>
+                                                </div>
+                                                <div class="flex items-center gap-12">
+                                                    <span style="font-size:0.72rem;color:var(--text-muted)" v-if="det.status==='available'">Estoque: {{ det.qty_available }} un.</span>
+                                                    <span style="font-weight:800" :style="{color: det.status==='available' ? 'var(--green)' : 'var(--text-dim)'}">
+                                                        {{ det.status==='available' ? 'R$ ' + det.price.toFixed(2).replace('.',',') : 'Indisponível' }}
+                                                    </span>
+                                                </div>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
 
-                                <!-- Mapa Ilustrativo -->
-                                <div class="map-visual">
-                                    <div class="map-overlay"></div>
-                                    <div class="map-ping"></div>
-                                    <div class="map-pin" v-if="routingResult.routes?.length">
-                                        <div class="map-pin-label">📍 {{ routingResult.routes[0].brand }} · R$ {{ routingResult.routes[0].total_price.toFixed(2).replace('.',',') }}</div>
+                                <!-- Coluna Direita: Mapa & Opções de Atendimento (Delivery vs Rota Física) -->
+                                <div style="display:flex;flex-direction:column;gap:14px;position:sticky;top:10px">
+                                    
+                                    <!-- Seletor de Modalidade: Receber em Casa vs Ir ao Mercado -->
+                                    <div class="fulfillment-toggle">
+                                        <button class="fulfillment-tab" :class="fulfillmentMode === 'delivery' ? 'active' : ''" @click="fulfillmentMode = 'delivery'">
+                                            <i class="fa-solid fa-truck-fast"></i>
+                                            <span>Receber em Casa (Delivery)</span>
+                                        </button>
+                                        <button class="fulfillment-tab" :class="fulfillmentMode === 'pickup' ? 'active' : ''" @click="fulfillmentMode = 'pickup'">
+                                            <i class="fa-solid fa-diamond-turn-right"></i>
+                                            <span>Ir ao Mercado (Rota)</span>
+                                        </button>
+                                    </div>
+
+                                    <!-- Leaflet Map Container -->
+                                    <div style="position:relative">
+                                        <div id="realRouteMap"></div>
+                                        <div v-if="isRouting" style="position:absolute;top:12px;right:12px;background:rgba(14,27,50,0.92);border:1px solid var(--green);color:white;padding:6px 12px;border-radius:10px;font-size:0.75rem;font-weight:700;display:flex;align-items:center;gap:8px;z-index:999">
+                                            <div class="spinner" style="width:12px;height:12px"></div>
+                                            <span>Traçando melhor caminho...</span>
+                                        </div>
+                                    </div>
+
+                                    <!-- OPÇÃO 1: PAINEL DE DELIVERY INTELIGENTE EM CASA -->
+                                    <div v-if="fulfillmentMode === 'delivery'" class="delivery-summary-card anim-up" style="padding:16px">
+                                        <div class="flex items-center justify-between" style="margin-bottom:10px">
+                                            <div style="font-size:0.75rem;font-weight:800;text-transform:uppercase;color:var(--green);letter-spacing:0.06em;display:flex;align-items:center;gap:6px">
+                                                <i class="fa-solid fa-house-chimney"></i>
+                                                <span>Entrega Otimizada</span>
+                                            </div>
+                                            <span class="chip chip-green" style="font-size:0.65rem">
+                                                <i class="fa-solid fa-bolt"></i> Frete Grátis
+                                            </span>
+                                        </div>
+
+                                        <div style="font-weight:900;font-size:1.1rem;margin-bottom:2px">
+                                            {{ (selectedMarket || routingResult.routes[0])?.brand }} <span style="color:var(--text-muted);font-size:0.8rem">({{ (selectedMarket || routingResult.routes[0])?.branch }})</span>
+                                        </div>
+                                        <div style="font-size:0.72rem;color:var(--text-muted);margin-bottom:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
+                                            <i class="fa-solid fa-location-dot" style="color:var(--green);margin-right:4px"></i>
+                                            {{ currentAddress }}
+                                        </div>
+
+                                        <div class="card" style="background:var(--surface2);padding:12px 14px;border:1px solid var(--border);margin-bottom:12px">
+                                            <div class="flex items-center justify-between" style="margin-bottom:6px">
+                                                <span style="font-size:0.78rem;color:var(--text-muted)">Previsão:</span>
+                                                <span style="font-weight:900;color:var(--green);font-size:0.85rem">~25 - 35 min</span>
+                                            </div>
+                                            <div class="flex items-center justify-between" style="margin-bottom:6px">
+                                                <span style="font-size:0.78rem;color:var(--text-muted)">Cesta Otimizada:</span>
+                                                <span style="font-weight:800;color:var(--blue);font-size:0.85rem">{{ (selectedMarket || routingResult.routes[0])?.items_found || 9 }} alimentos</span>
+                                            </div>
+                                            <div class="flex items-center justify-between" style="margin-bottom:6px">
+                                                <span style="font-size:0.78rem;color:var(--text-muted)">Economia SmartDiet:</span>
+                                                <span class="chip chip-green" style="font-size:0.7rem;font-weight:900">R$ {{ ((selectedMarket || routingResult.routes[0])?.total_price * 0.14 || 42.50).toFixed(2).replace('.',',') }}</span>
+                                            </div>
+                                            <div class="divider" style="margin:6px 0"></div>
+                                            <div class="flex items-center justify-between">
+                                                <span style="font-weight:800;font-size:0.85rem">Total a Pagar:</span>
+                                                <span style="font-weight:900;font-size:1.25rem;color:var(--green)">
+                                                    R$ {{ (selectedMarket || routingResult.routes[0])?.total_price.toFixed(2).replace('.',',') }}
+                                                </span>
+                                            </div>
+                                        </div>
+
+                                        <button class="delivery-btn-cta" @click="openCheckoutModal(selectedMarket || routingResult.routes[0])">
+                                            <i class="fa-solid fa-credit-card"></i>
+                                            <span>Ir para Pagamento & Checkout</span>
+                                        </button>
+                                        <div style="text-align:center;font-size:0.68rem;color:var(--text-muted);margin-top:6px">
+                                            <i class="fa-solid fa-shield-halved" style="color:var(--green)"></i> PIX (-3%), Cartão até 3x, SmartPay ou Apple Pay
+                                        </div>
+                                    </div>
+
+                                    <!-- OPÇÃO 2: GUIA DE ROTA & COMO CHEGAR FÍSICO -->
+                                    <div v-else class="route-guide-card anim-up" style="padding:16px">
+                                        <div class="flex items-center justify-between" style="margin-bottom:10px">
+                                            <div style="font-size:0.75rem;font-weight:800;text-transform:uppercase;color:var(--green);letter-spacing:0.06em;display:flex;align-items:center;gap:6px">
+                                                <i class="fa-solid fa-diamond-turn-right"></i>
+                                                <span>Como Chegar ao Mercado</span>
+                                            </div>
+                                            <span class="chip chip-blue" style="font-size:0.65rem">
+                                                {{ (selectedMarket || routingResult.routes[0])?.distance_km }} km de distância
+                                            </span>
+                                        </div>
+
+                                        <div style="font-weight:900;font-size:1.05rem;margin-bottom:2px">
+                                            {{ (selectedMarket || routingResult.routes[0])?.brand }} <span style="color:var(--text-muted);font-size:0.8rem">({{ (selectedMarket || routingResult.routes[0])?.branch }})</span>
+                                        </div>
+                                        <div style="font-size:0.72rem;color:var(--text-muted);margin-bottom:10px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
+                                            <i class="fa-solid fa-location-dot" style="color:var(--green);margin-right:4px"></i>
+                                            {{ (selectedMarket || routingResult.routes[0])?.address }}
+                                        </div>
+
+                                        <!-- Modos de Transporte -->
+                                        <div class="flex gap-6" style="margin-bottom:12px">
+                                            <div class="route-mode-pill" style="border-color:var(--green);padding:6px 4px">
+                                                <i class="fa-solid fa-car" style="color:var(--green);font-size:0.95rem"></i>
+                                                <span style="font-size:0.8rem;font-weight:900;color:white">~{{ (selectedMarket || routingResult.routes[0])?.travel_time_min }} min</span>
+                                                <span style="font-size:0.6rem;color:var(--text-muted)">Carro</span>
+                                            </div>
+                                            <div class="route-mode-pill" style="padding:6px 4px">
+                                                <i class="fa-solid fa-person-walking" style="color:var(--blue);font-size:0.95rem"></i>
+                                                <span style="font-size:0.8rem;font-weight:900;color:white">~{{ Math.round(((selectedMarket || routingResult.routes[0])?.distance_km || 1) * 12 + 2) }} min</span>
+                                                <span style="font-size:0.6rem;color:var(--text-muted)">A Pé</span>
+                                            </div>
+                                            <div class="route-mode-pill" style="padding:6px 4px">
+                                                <i class="fa-solid fa-bicycle" style="color:var(--orange);font-size:0.95rem"></i>
+                                                <span style="font-size:0.8rem;font-weight:900;color:white">~{{ Math.round(((selectedMarket || routingResult.routes[0])?.distance_km || 1) * 4 + 2) }} min</span>
+                                                <span style="font-size:0.6rem;color:var(--text-muted)">Bike</span>
+                                            </div>
+                                        </div>
+
+                                        <!-- Passos da Rota (Turn-by-turn) -->
+                                        <div style="font-size:0.68rem;font-weight:800;text-transform:uppercase;color:var(--text-dim);margin-bottom:6px">
+                                            Instruções de Navegação:
+                                        </div>
+                                        <div style="max-height:140px;overflow-y:auto;padding-right:4px;margin-bottom:12px">
+                                            <div v-for="(step, sIdx) in navigationSteps" :key="sIdx" class="route-step-row" style="padding:6px 0">
+                                                <div class="route-step-icon" style="width:22px;height:22px;font-size:0.65rem">
+                                                    <i :class="step.icon || 'fa-solid fa-arrow-up'"></i>
+                                                </div>
+                                                <div style="flex:1">
+                                                    <div style="font-weight:700;color:var(--text);font-size:0.75rem">{{ step.instruction }}</div>
+                                                    <div style="font-size:0.65rem;color:var(--text-muted)" v-if="step.distance">
+                                                        {{ step.distance }}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <!-- Botões de Navegação GPS Externa -->
+                                        <div class="flex gap-8">
+                                            <a :href="getGoogleMapsUrl(selectedMarket || routingResult.routes[0])" target="_blank" class="nav-app-btn nav-app-google" style="padding:8px 10px;font-size:0.75rem" title="Abrir rota no Google Maps">
+                                                <i class="fa-brands fa-google"></i>
+                                                <span>Google Maps</span>
+                                            </a>
+                                            <a :href="getWazeUrl(selectedMarket || routingResult.routes[0])" target="_blank" class="nav-app-btn nav-app-waze" style="padding:8px 10px;font-size:0.75rem" title="Navegar pelo Waze">
+                                                <i class="fa-brands fa-waze"></i>
+                                                <span>Waze</span>
+                                            </a>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- MODAL DE CHECKOUT & PAGAMENTOS INTERATIVOS -->
+                        <div v-if="showCheckoutModal" class="checkout-modal-backdrop" @click.self="closeCheckoutModal">
+                            <div class="checkout-modal-content anim-up">
+                                <div class="flex items-center justify-between" style="margin-bottom:18px">
+                                    <div>
+                                        <div style="font-size:0.72rem;font-weight:800;text-transform:uppercase;color:var(--green);letter-spacing:0.08em;display:flex;align-items:center;gap:6px">
+                                            <i class="fa-solid fa-lock"></i> Checkout Seguro SmartDiet
+                                        </div>
+                                        <div style="font-size:1.35rem;font-weight:900">Pagamento & Agendamento</div>
+                                    </div>
+                                    <button class="logout-btn" @click="closeCheckoutModal"><i class="fa-solid fa-xmark"></i></button>
+                                </div>
+
+                                <div style="display:grid;grid-template-columns:1.2fr 0.8fr;gap:20px;align-items:start">
+                                    <!-- Coluna Esquerda: Formas de Pagamento -->
+                                    <div>
+                                        <!-- Seletor de Métodos -->
+                                        <div class="payment-methods-grid">
+                                            <button class="payment-tab-btn" :class="paymentMethod==='pix' ? 'active' : ''" @click="paymentMethod='pix'">
+                                                <i class="fa-brands fa-pix"></i>
+                                                <span>PIX (-3%)</span>
+                                            </button>
+                                            <button class="payment-tab-btn" :class="paymentMethod==='credit' ? 'active' : ''" @click="paymentMethod='credit'">
+                                                <i class="fa-regular fa-credit-card"></i>
+                                                <span>Cartão</span>
+                                            </button>
+                                            <button class="payment-tab-btn" :class="paymentMethod==='smartpay' ? 'active' : ''" @click="paymentMethod='smartpay'">
+                                                <i class="fa-solid fa-bolt"></i>
+                                                <span>SmartPay</span>
+                                            </button>
+                                            <button class="payment-tab-btn" :class="paymentMethod==='applepay' ? 'active' : ''" @click="paymentMethod='applepay'">
+                                                <i class="fa-brands fa-apple"></i>
+                                                <span>Apple Pay</span>
+                                            </button>
+                                        </div>
+
+                                        <!-- 1. ABA PIX -->
+                                        <div v-if="paymentMethod==='pix'" class="pix-box-wrap anim-up">
+                                            <div style="font-weight:800;font-size:0.95rem;color:var(--blue);margin-bottom:4px">
+                                                <i class="fa-solid fa-qrcode"></i> Pague com PIX Instantâneo
+                                            </div>
+                                            <div style="font-size:0.75rem;color:var(--text-muted);margin-bottom:12px">
+                                                Aprovação em segundos · QR Code expira em: <strong style="color:var(--yellow)">{{ formatPixTimer() }}</strong>
+                                            </div>
+
+                                            <!-- QR Code Frame -->
+                                            <div class="pix-qr-frame">
+                                                <svg viewBox="0 0 100 100" style="width:100%;height:100%">
+                                                    <rect width="100" height="100" fill="white"/>
+                                                    <rect x="8" y="8" width="26" height="26" fill="#060B14"/>
+                                                    <rect x="13" y="13" width="16" height="16" fill="white"/>
+                                                    <rect x="17" y="17" width="8" height="8" fill="#060B14"/>
+
+                                                    <rect x="66" y="8" width="26" height="26" fill="#060B14"/>
+                                                    <rect x="71" y="13" width="16" height="16" fill="white"/>
+                                                    <rect x="75" y="17" width="8" height="8" fill="#060B14"/>
+
+                                                    <rect x="8" y="66" width="26" height="26" fill="#060B14"/>
+                                                    <rect x="13" y="71" width="16" height="16" fill="white"/>
+                                                    <rect x="17" y="75" width="8" height="8" fill="#060B14"/>
+
+                                                    <rect x="42" y="15" width="6" height="6" fill="#16C47F"/>
+                                                    <rect x="52" y="20" width="6" height="6" fill="#060B14"/>
+                                                    <rect x="42" y="32" width="6" height="6" fill="#060B14"/>
+                                                    <rect x="50" y="45" width="8" height="8" fill="#16C47F"/>
+                                                    <rect x="65" y="48" width="6" height="6" fill="#060B14"/>
+                                                    <rect x="78" y="58" width="6" height="6" fill="#060B14"/>
+                                                    <rect x="45" y="68" width="6" height="6" fill="#060B14"/>
+                                                    <rect x="58" y="78" width="6" height="6" fill="#16C47F"/>
+                                                    <rect x="72" y="75" width="6" height="6" fill="#060B14"/>
+                                                </svg>
+                                            </div>
+
+                                            <!-- Chave Pix Copia e Cola -->
+                                            <div class="pix-copy-row">
+                                                <span style="font-size:0.72rem;color:var(--text-muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1">{{ pixCodeString }}</span>
+                                                <button class="loc-btn loc-btn-primary" style="padding:5px 10px;font-size:0.72rem" @click="copyPixCode">
+                                                    <i class="fa-solid fa-copy"></i> Copiar
+                                                </button>
+                                            </div>
+
+                                            <!-- Botão de Simulação Instantânea do PIX -->
+                                            <div style="margin-top:14px">
+                                                <button class="btn-primary" style="background:rgba(56,189,248,0.2);color:var(--blue);border:1px solid var(--blue);font-size:0.85rem;padding:10px" @click="processPayment(true)">
+                                                    <i class="fa-solid fa-bolt"></i> Simular Confirmação Instantânea do PIX
+                                                </button>
+                                            </div>
+                                        </div>
+
+                                        <!-- 2. ABA CARTÃO DE CRÉDITO -->
+                                        <div v-if="paymentMethod==='credit'" class="anim-up">
+                                            <!-- Preview 3D Interativo do Cartão -->
+                                            <div class="credit-card-3d">
+                                                <div class="flex items-center justify-between" style="margin-bottom:18px">
+                                                    <div class="card-chip"></div>
+                                                    <i class="fa-brands fa-cc-mastercard" style="font-size:2rem;color:#facc15"></i>
+                                                </div>
+                                                <div style="font-size:1.25rem;font-weight:900;letter-spacing:0.12em;font-family:monospace;margin-bottom:14px">
+                                                    {{ cardForm.number || '4532 8920 1144 7829' }}
+                                                </div>
+                                                <div class="flex items-center justify-between" style="font-size:0.75rem;text-transform:uppercase">
+                                                    <div>
+                                                        <div style="font-size:0.6rem;color:rgba(255,255,255,0.6)">Titular do Cartão</div>
+                                                        <div style="font-weight:800">{{ cardForm.name || 'ANDRE SUHAI' }}</div>
+                                                    </div>
+                                                    <div style="text-align:right">
+                                                        <div style="font-size:0.6rem;color:rgba(255,255,255,0.6)">Validade</div>
+                                                        <div style="font-weight:800">{{ cardForm.expiry || '08/29' }}</div>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <!-- Formulário Interativo de Cartão -->
+                                            <div style="display:flex;flex-direction:column;gap:10px">
+                                                <div>
+                                                    <label class="form-label">Número do Cartão</label>
+                                                    <input type="text" v-model="cardForm.number" class="form-input" placeholder="0000 0000 0000 0000">
+                                                </div>
+                                                <div>
+                                                    <label class="form-label">Nome Impresso no Cartão</label>
+                                                    <input type="text" v-model="cardForm.name" class="form-input" placeholder="NOME DO TITULAR">
+                                                </div>
+                                                <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px">
+                                                    <div>
+                                                        <label class="form-label">Validade</label>
+                                                        <input type="text" v-model="cardForm.expiry" class="form-input" placeholder="MM/AA">
+                                                    </div>
+                                                    <div>
+                                                        <label class="form-label">CVV</label>
+                                                        <input type="password" v-model="cardForm.cvv" maxlength="4" class="form-input" placeholder="•••">
+                                                    </div>
+                                                    <div>
+                                                        <label class="form-label">Parcelas</label>
+                                                        <select v-model="cardForm.installments" class="form-input">
+                                                            <option value="1">1x s/ juros</option>
+                                                            <option value="2">2x s/ juros</option>
+                                                            <option value="3">3x s/ juros</option>
+                                                        </select>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <!-- 3. ABA SMARTPAY (SALDO) -->
+                                        <div v-if="paymentMethod==='smartpay'" class="card anim-up" style="background:var(--surface2);padding:20px;border:1px solid var(--green);margin-bottom:14px">
+                                            <div class="flex items-center gap-12" style="margin-bottom:12px">
+                                                <div style="width:44px;height:44px;border-radius:12px;background:var(--green-dim);color:var(--green);display:flex;align-items:center;justify-content:center;font-size:1.3rem">
+                                                    <i class="fa-solid fa-wallet"></i>
+                                                </div>
+                                                <div>
+                                                    <div style="font-weight:900;font-size:1.1rem">SmartDiet Cashback Wallet</div>
+                                                    <div style="font-size:0.75rem;color:var(--text-muted)">Saldo acumulado em compras e adesão ao plano</div>
+                                                </div>
+                                            </div>
+                                            <div style="font-size:1.6rem;font-weight:900;color:var(--green);margin-bottom:8px">R$ 50,00</div>
+                                            <div style="font-size:0.8rem;color:var(--text-muted)">Será debitado automaticamente do seu saldo após a confirmação.</div>
+                                        </div>
+
+                                        <!-- 4. ABA APPLE PAY / GPAY -->
+                                        <div v-if="paymentMethod==='applepay'" class="card anim-up" style="background:var(--surface2);padding:24px;border:1px solid var(--border);text-align:center">
+                                            <i class="fa-brands fa-apple" style="font-size:3rem;margin-bottom:12px;display:block"></i>
+                                            <div style="font-weight:900;font-size:1.1rem;margin-bottom:6px">Apple Pay Express</div>
+                                            <div style="font-size:0.8rem;color:var(--text-muted);margin-bottom:16px">Autenticação biométrica rápida com Touch ID / Face ID.</div>
+                                        </div>
+
+                                        <!-- Seletor de Horário / Agendamento -->
+                                        <div style="margin-top:16px">
+                                            <label class="form-label"><i class="fa-regular fa-clock"></i> Previsão de Entrega no Seu Endereço</label>
+                                            <div style="display:flex;gap:8px">
+                                                <button class="loc-btn" :class="deliverySchedule==='express' ? 'loc-btn-primary' : ''" @click="deliverySchedule='express'" style="flex:1;text-align:center;font-size:0.75rem">
+                                                    ⚡ Agora (~28 min)
+                                                </button>
+                                                <button class="loc-btn" :class="deliverySchedule==='evening' ? 'loc-btn-primary' : ''" @click="deliverySchedule='evening'" style="flex:1;text-align:center;font-size:0.75rem">
+                                                    🕒 Hoje (19:30)
+                                                </button>
+                                                <button class="loc-btn" :class="deliverySchedule==='tomorrow' ? 'loc-btn-primary' : ''" @click="deliverySchedule='tomorrow'" style="flex:1;text-align:center;font-size:0.75rem">
+                                                    📅 Amanhã (08:00)
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Coluna Direita: Resumo Financeiro & Cupons -->
+                                    <div class="card" style="background:var(--surface2);padding:18px;border:1px solid var(--border)">
+                                        <div style="font-weight:900;font-size:1rem;margin-bottom:12px">Resumo do Pedido</div>
+
+                                        <!-- Filial e Endereço -->
+                                        <div style="font-size:0.75rem;color:var(--text-muted);margin-bottom:12px">
+                                            <div>Loja: <strong style="color:var(--text)">{{ checkoutMarket?.brand }} ({{ checkoutMarket?.branch }})</strong></div>
+                                            <div style="margin-top:2px">Destino: <strong style="color:var(--text)">{{ currentAddress }}</strong></div>
+                                        </div>
+
+                                        <!-- Cupom de Desconto Interativo -->
+                                        <div style="margin-bottom:14px">
+                                            <label class="form-label">Cupom de Desconto</label>
+                                            <div style="display:flex;gap:6px;margin-bottom:8px">
+                                                <input type="text" v-model="couponCode" class="form-input" placeholder="Ex: PRIMEIRACOMPRA" style="text-transform:uppercase" @keyup.enter="applyCoupon()">
+                                                <button class="loc-btn loc-btn-primary" style="padding:8px 12px;font-size:0.75rem" @click="applyCoupon()">Aplicar</button>
+                                            </div>
+                                            <!-- Sugestões de Cupons Rápidos -->
+                                            <div style="display:flex;gap:6px;flex-wrap:wrap">
+                                                <span class="coupon-tag" @click="applyCoupon('PRIMEIRACOMPRA')">🏷️ PRIMEIRACOMPRA (-10%)</span>
+                                                <span class="coupon-tag" @click="applyCoupon('INVESTOR2026')">🏷️ INVESTOR2026 (-15%)</span>
+                                            </div>
+                                            <div v-if="appliedCoupon" style="margin-top:6px;font-size:0.75rem;color:var(--green);font-weight:700;display:flex;align-items:center;justify-content:space-between">
+                                                <span>✓ Cupom {{ appliedCoupon.code }} ativo!</span>
+                                                <button style="background:transparent;border:none;color:var(--red);cursor:pointer;font-size:0.7rem" @click="removeCoupon">Remover</button>
+                                            </div>
+                                        </div>
+
+                                        <div class="divider" style="margin:10px 0"></div>
+
+                                        <!-- Breakdown de Valores -->
+                                        <div style="display:flex;flex-direction:column;gap:6px;font-size:0.8rem;margin-bottom:16px">
+                                            <div class="flex items-center justify-between">
+                                                <span style="color:var(--text-muted)">Subtotal da Cesta ({{ checkoutMarket?.items_found || 9 }} itens):</span>
+                                                <span style="font-weight:800">R$ {{ checkoutSubtotal.toFixed(2).replace('.',',') }}</span>
+                                            </div>
+                                            <div v-if="appliedCoupon" class="flex items-center justify-between" style="color:var(--green)">
+                                                <span>Desconto ({{ appliedCoupon.code }}):</span>
+                                                <span style="font-weight:800">- R$ {{ checkoutDiscount.toFixed(2).replace('.',',') }}</span>
+                                            </div>
+                                            <div v-if="paymentMethod==='pix'" class="flex items-center justify-between" style="color:var(--blue)">
+                                                <span>Desconto PIX Instantâneo (3%):</span>
+                                                <span style="font-weight:800">- R$ {{ (checkoutSubtotal * 0.03).toFixed(2).replace('.',',') }}</span>
+                                            </div>
+                                            <div class="flex items-center justify-between">
+                                                <span style="color:var(--text-muted)">Taxa de Entrega Express:</span>
+                                                <span class="chip chip-green" style="font-size:0.65rem">Grátis</span>
+                                            </div>
+                                            <div class="divider" style="margin:6px 0"></div>
+                                            <div class="flex items-center justify-between" style="font-size:1.15rem">
+                                                <span style="font-weight:900">Total Final:</span>
+                                                <span style="font-weight:900;color:var(--green)" class="text-gradient">
+                                                    R$ {{ checkoutFinalTotal.toFixed(2).replace('.',',') }}
+                                                </span>
+                                            </div>
+                                        </div>
+
+                                        <!-- Botão de Pagamento com Feedback Animado -->
+                                        <button class="delivery-btn-cta" :disabled="isProcessingPayment" @click="processPayment()">
+                                            <div v-if="isProcessingPayment" class="spinner" style="width:20px;height:20px"></div>
+                                            <span v-else>
+                                                <i class="fa-solid fa-lock"></i> Pagar R$ {{ checkoutFinalTotal.toFixed(2).replace('.',',') }} & Despachar
+                                            </span>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- MODAL DE SIMULAÇÃO DE ENTREGA EXPRESSA EM CASA -->
+                        <div v-if="showDeliveryModal" class="delivery-modal-backdrop" @click.self="closeDeliveryModal">
+                            <div class="delivery-modal-content anim-up">
+                                <div class="flex items-center justify-between" style="margin-bottom:18px">
+                                    <div>
+                                        <div style="font-size:0.75rem;font-weight:800;text-transform:uppercase;color:var(--green);letter-spacing:0.08em">
+                                            <i class="fa-solid fa-satellite-dish"></i> Despacho Inteligente
+                                        </div>
+                                        <div style="font-size:1.35rem;font-weight:900">Acompanhamento do Pedido</div>
+                                    </div>
+                                    <button class="logout-btn" @click="closeDeliveryModal"><i class="fa-solid fa-xmark"></i></button>
+                                </div>
+
+                                <!-- Header do Pedido -->
+                                <div class="card" style="background:var(--surface2);padding:14px 18px;border:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+                                    <div>
+                                        <div style="font-size:0.7rem;color:var(--text-dim);text-transform:uppercase;font-weight:800">Código do Pedido</div>
+                                        <div style="font-weight:900;font-size:1.1rem;color:var(--blue)">#{{ deliveryOrder?.order_id || 'SD-84920' }}</div>
+                                    </div>
+                                    <div style="text-align:right">
+                                        <div style="font-size:0.7rem;color:var(--text-dim);text-transform:uppercase;font-weight:800">Previsão de Chegada</div>
+                                        <div style="font-weight:900;font-size:1.1rem;color:var(--green)">~{{ deliveryOrder?.estimated_minutes || 28 }} min</div>
+                                    </div>
+                                </div>
+
+                                <!-- Barra de Progresso da Entrega -->
+                                <div class="tracker-progress-track">
+                                    <div class="tracker-progress-fill" :style="{width: deliveryStep === 1 ? '25%' : deliveryStep === 2 ? '50%' : deliveryStep === 3 ? '75%' : '100%'}"></div>
+                                </div>
+
+                                <!-- Etapas Animadas da Entrega -->
+                                <div style="display:flex;flex-direction:column;gap:4px;margin-bottom:20px">
+                                    <!-- Etapa 1 -->
+                                    <div class="tracker-step-row">
+                                        <div class="tracker-step-badge" :class="deliveryStep > 1 ? 'done' : deliveryStep === 1 ? 'active' : 'pending'">
+                                            <i :class="deliveryStep > 1 ? 'fa-solid fa-check' : 'fa-solid fa-satellite-dish'"></i>
+                                        </div>
+                                        <div style="flex:1">
+                                            <div style="font-weight:800;color:var(--text)">1. Transmissão do Pedido Nutricional</div>
+                                            <div style="font-size:0.75rem;color:var(--text-muted)">Cesta sincronizada com a filial {{ deliveryOrder?.market_name || 'Pão de Açúcar' }}.</div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Etapa 2 -->
+                                    <div class="tracker-step-row">
+                                        <div class="tracker-step-badge" :class="deliveryStep > 2 ? 'done' : deliveryStep === 2 ? 'active' : 'pending'">
+                                            <i :class="deliveryStep > 2 ? 'fa-solid fa-check' : 'fa-solid fa-box-open'"></i>
+                                        </div>
+                                        <div style="flex:1">
+                                            <div style="font-weight:800;color:var(--text)">2. Separação Otimizada no Estoque</div>
+                                            <div style="font-size:0.75rem;color:var(--text-muted)">{{ deliveryOrder?.items_count || 9 }} alimentos conferidos conforme as restrições da sua dieta.</div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Etapa 3 -->
+                                    <div class="tracker-step-row">
+                                        <div class="tracker-step-badge" :class="deliveryStep > 3 ? 'done' : deliveryStep === 3 ? 'active' : 'pending'">
+                                            <i :class="deliveryStep > 3 ? 'fa-solid fa-check' : 'fa-solid fa-motorcycle'"></i>
+                                        </div>
+                                        <div style="flex:1">
+                                            <div style="font-weight:800;color:var(--text)">3. Entregador a Caminho pela Rota Mais Rápida</div>
+                                            <div style="font-size:0.75rem;color:var(--text-muted)">
+                                                {{ deliveryOrder?.courier?.name || 'Carlos Eduardo' }} · {{ deliveryOrder?.courier?.vehicle || 'Honda CG 160 Cargo' }} (Placa {{ deliveryOrder?.courier?.plate || 'BRA-2E19' }})
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Etapa 4 -->
+                                    <div class="tracker-step-row">
+                                        <div class="tracker-step-badge" :class="deliveryStep === 4 ? 'done' : 'pending'">
+                                            <i :class="deliveryStep === 4 ? 'fa-solid fa-house-circle-check' : 'fa-solid fa-house'"></i>
+                                        </div>
+                                        <div style="flex:1">
+                                            <div style="font-weight:800" :style="{color: deliveryStep === 4 ? 'var(--green)' : 'var(--text-dim)'}">4. Entrega Realizada com Sucesso</div>
+                                            <div style="font-size:0.75rem;color:var(--text-muted)">No endereço: {{ deliveryOrder?.delivery_address || currentAddress }}</div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Resumo Financeiro & Economia -->
+                                <div class="card" style="background:var(--surface2);padding:14px;border:1px solid var(--border);margin-bottom:18px">
+                                    <div class="flex items-center justify-between" style="margin-bottom:6px">
+                                        <span style="font-size:0.8rem;color:var(--text-muted)">Valor Total Pago:</span>
+                                        <span style="font-weight:900;color:var(--green);font-size:1.1rem">R$ {{ Number(deliveryOrder?.total_paid || 345.50).toFixed(2).replace('.',',') }}</span>
+                                    </div>
+                                    <div class="flex items-center justify-between">
+                                        <span style="font-size:0.8rem;color:var(--text-muted)">Economia Obtida com SmartDiet:</span>
+                                        <span class="chip chip-green" style="font-weight:800">R$ {{ Number(deliveryOrder?.savings_reais || 42.50).toFixed(2).replace('.',',') }} economizados</span>
+                                    </div>
+                                </div>
+
+                                <button class="btn-primary w-full" style="padding:14px" @click="closeDeliveryModal">
+                                    <i class="fa-solid fa-check"></i> {{ deliveryStep === 4 ? 'Concluir & Voltar ao App' : 'Entendido, Acompanhar em Segundo Plano' }}
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- MODAL DE ALTERAÇÃO DE ENDEREÇO / CEP -->
+                        <div v-if="showLocationModal" class="loc-modal-backdrop" @click.self="showLocationModal=false">
+                            <div class="loc-modal">
+                                <div class="flex items-center justify-between" style="margin-bottom:18px">
+                                    <div>
+                                        <div style="font-size:1.25rem;font-weight:900">Definir Endereço de Entrega</div>
+                                        <div style="font-size:0.78rem;color:var(--text-muted)">Pesquise itens e estoque no supermercado mais próximo de você</div>
+                                    </div>
+                                    <button class="logout-btn" @click="showLocationModal=false"><i class="fa-solid fa-xmark"></i></button>
+                                </div>
+
+                                <div style="margin-bottom:16px">
+                                    <button class="btn-primary w-full" style="padding:14px;background:var(--green-dim);color:var(--green);border:1px solid var(--green);margin-bottom:18px" @click="fetchUserGPS(true);showLocationModal=false">
+                                        <i class="fa-solid fa-crosshairs"></i> Usar Minha Localização Atual via GPS
+                                    </button>
+
+                                    <label class="form-label">Buscar por CEP ou Logradouro em São Paulo</label>
+                                    <div style="display:flex;gap:8px;margin-bottom:18px">
+                                        <input type="text" v-model="searchCepInput" class="form-input" placeholder="Digite seu CEP (ex: 04538-133) ou Rua..." @keyup.enter="saveCustomAddress">
+                                        <button class="btn-primary" style="width:auto;padding:10px 18px" @click="saveCustomAddress">
+                                            <i class="fa-solid fa-search"></i>
+                                        </button>
+                                    </div>
+
+                                    <div style="font-size:0.72rem;font-weight:800;color:var(--text-dim);text-transform:uppercase;margin-bottom:10px">Atalhos de Regiões para Demonstração Rápida:</div>
+                                    <div style="display:flex;flex-direction:column;gap:8px">
+                                        <div v-for="p in locationPresets" :key="p.cep" class="card" style="padding:12px 16px;cursor:pointer;display:flex;justify-content:space-between;align-items:center;background:var(--surface2);border:1px solid var(--border)" @click="applyLocationPreset(p, true);showLocationModal=false">
+                                            <div>
+                                                <div style="font-weight:800;font-size:0.9rem">📍 {{ p.name }}</div>
+                                                <div style="font-size:0.75rem;color:var(--text-muted)">CEP: {{ p.cep }}</div>
+                                            </div>
+                                            <span class="chip chip-blue" style="font-size:0.72rem">Cotar Nesta Região</span>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -739,6 +1923,14 @@
                                     <img :src="userProfile.avatar || 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=200&q=80'" style="width:90px;height:90px;border-radius:50%;object-fit:cover;border:3px solid var(--green);margin:0 auto 12px;display:block">
                                     <div style="font-size:1.2rem;font-weight:900">{{ user.name }}</div>
                                     <div style="font-size:0.78rem;color:var(--text-muted);margin-bottom:16px">{{ user.email }}</div>
+                                    <div class="divider"></div>
+                                    <div style="margin-bottom:16px;text-align:left">
+                                        <label class="form-label">Seu CEP (Localização Real)</label>
+                                        <div style="display:flex;gap:8px">
+                                            <input type="text" v-model="userProfile.cep" class="form-input" placeholder="Ex: 04546042">
+                                            <button class="btn-primary" style="width:auto;padding:8px 12px" @click="saveProfile"><i class="fa-solid fa-save"></i></button>
+                                        </div>
+                                    </div>
                                     <div class="divider"></div>
                                     <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
                                         <div style="padding:10px;background:var(--surface2);border-radius:10px">
@@ -779,15 +1971,20 @@
                         <!-- ==================================================== -->
                         <!-- NUTRICIONISTA: ESTÚDIO DE PRESCRIÇÃO CLÍNICA          -->
                         <!-- ==================================================== -->
-                        <div v-if="tab==='nutri_prescription' && userRole==='nutritionist'" key="nutri_rx" class="anim-up">
+                        <div v-if="userRole==='nutritionist' && tab!=='nutri_patients' && tab!=='nutri_catalog'" key="nutri_rx" class="anim-up">
                             <div class="page-header">
                                 <div>
                                     <div class="page-title">Estúdio de Prescrição Nutricional</div>
                                     <div class="page-subtitle">Monte ou edite dietas clínicas com cálculo automático de macros e sincronização imediata</div>
                                 </div>
-                                <button class="btn-primary btn-purple" style="width:auto;padding:12px 24px" @click="savePrescription">
-                                    <i class="fa-solid fa-cloud-arrow-up"></i> Salvar e Enviar ao Paciente
-                                </button>
+                                <div style="display:flex;gap:10px">
+                                    <button class="btn-primary" style="width:auto;padding:12px 24px;background:var(--surface2);border:1px solid var(--green);color:var(--green)" @click="autoGenerateMeals">
+                                        <i class="fa-solid fa-wand-magic-sparkles"></i> Gerar Refeições Auto
+                                    </button>
+                                    <button class="btn-primary btn-purple" style="width:auto;padding:12px 24px" @click="savePrescription">
+                                        <i class="fa-solid fa-cloud-arrow-up"></i> Salvar e Enviar ao Paciente
+                                    </button>
+                                </div>
                             </div>
 
                             <!-- Seletor de Paciente & Protocolos Rápidos -->
@@ -795,7 +1992,7 @@
                                 <div style="display:grid;grid-template-columns:1fr 2fr;gap:20px;align-items:center">
                                     <div>
                                         <label class="form-label" style="color:var(--purple)"><i class="fa-solid fa-user"></i> Paciente em Atendimento</label>
-                                        <select v-model="selectedPatientId" @change="onSelectPatient" class="form-input" style="font-weight:800;font-size:0.95rem">
+                                        <select v-model.number="selectedPatientId" @change="onSelectPatient" class="form-input" style="font-weight:800;font-size:0.95rem">
                                             <option v-for="p in patientsList" :key="p.id" :value="p.id">{{ p.name }} ({{ p.email }})</option>
                                         </select>
                                     </div>
@@ -855,10 +2052,10 @@
                                 <div class="card" style="padding:20px">
                                     <div style="font-size:0.78rem;font-weight:800;text-transform:uppercase;color:var(--text-dim);margin-bottom:12px">Restrições & Regras Clínicas</div>
                                     <div style="display:flex;flex-direction:column;gap:8px">
-                                        <div v-for="tag in allTagsList" :key="tag.id" class="chip chip-interactive" :class="currentDiet.restriction_tag_ids.includes(tag.id) ? chipColor(tag.color) : 'chip-inactive'" @click="toggleTagSelection(tag.id)">
+                                        <div v-for="tag in allTagsList" :key="tag.id" class="chip chip-interactive" :class="(currentDiet?.restriction_tag_ids || []).includes(tag.id) ? chipColor(tag.color) : 'chip-inactive'" @click="toggleTagSelection(tag.id)">
                                             <i :class="'fa-solid ' + tag.icon"></i>
                                             <span style="flex:1">{{ tag.tag_name }}</span>
-                                            <i class="fa-solid" :class="currentDiet.restriction_tag_ids.includes(tag.id) ? 'fa-check' : 'fa-plus'"></i>
+                                            <i class="fa-solid" :class="(currentDiet?.restriction_tag_ids || []).includes(tag.id) ? 'fa-check' : 'fa-plus'"></i>
                                         </div>
                                     </div>
                                 </div>
@@ -868,7 +2065,7 @@
                             <div class="card" style="padding:20px">
                                 <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
                                     <div>
-                                        <div style="font-size:1.1rem;font-weight:900">Refeições Prescritas ({{ currentDiet.meals.length }})</div>
+                                        <div style="font-size:1.1rem;font-weight:900">Refeições Prescritas ({{ (currentDiet?.meals || []).length }})</div>
                                         <div style="font-size:0.75rem;color:var(--text-muted)">Configure os alimentos e porções em gramas</div>
                                     </div>
                                     <button class="btn-primary btn-purple" style="width:auto;padding:8px 16px;font-size:0.8rem" @click="addNewMeal">
@@ -880,7 +2077,7 @@
                                     <div v-for="(m, idx) in currentDiet.meals" :key="idx" class="meal-builder-row">
                                         <input type="text" v-model="m.meal_name" class="form-input" placeholder="Nome Refeição">
                                         <input type="text" v-model="m.meal_time" class="form-input" placeholder="08:00">
-                                        <select v-model="m.recommended_product_id" class="form-input">
+                                        <select v-model.number="m.recommended_product_id" class="form-input">
                                             <option v-for="p in catalogProducts" :key="p.id" :value="p.id">{{ p.name }} ({{ p.category }})</option>
                                         </select>
                                         <div style="display:flex;align-items:center;gap:4px">
@@ -918,11 +2115,11 @@
                             <div class="page-header">
                                 <div>
                                     <div class="page-title">Painel de Pacientes Acompanhados</div>
-                                    <div class="page-subtitle">{{ patientsList.length }} pacientes cadastrados com dietas ativas</div>
+                                    <div class="page-subtitle">{{ (patientsList || []).length }} pacientes cadastrados com dietas ativas</div>
                                 </div>
                             </div>
 
-                            <div style="display:grid;grid-template-columns:repeat(3, 1fr);gap:18px">
+                            <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(300px, 1fr));gap:18px">
                                 <div v-for="p in patientsList" :key="p.id" class="card" style="padding:22px;display:flex;flex-direction:column;justify-content:space-between">
                                     <div>
                                         <div class="flex items-center gap-12" style="margin-bottom:14px">
@@ -944,7 +2141,7 @@
                                         <div style="margin-bottom:16px">
                                             <div style="font-size:0.7rem;color:var(--text-dim);font-weight:800;text-transform:uppercase;margin-bottom:6px">Restrições Clínicas:</div>
                                             <div style="display:flex;gap:6px;flex-wrap:wrap">
-                                                <span v-for="r in p.restrictions" :key="r.id" class="chip" :class="chipColor(r.color)">{{ r.tag_name }}</span>
+                                                <span v-for="r in (p.restrictions || [])" :key="r.id || r.tag_name" class="chip" :class="chipColor(r.color)">{{ r.tag_name }}</span>
                                             </div>
                                         </div>
                                     </div>
@@ -989,7 +2186,7 @@
                                             <td style="color:#f87171;font-weight:800">{{ item.nutritional_info?.prot || 0 }}g</td>
                                             <td style="color:var(--yellow);font-weight:800">{{ item.nutritional_info?.carb || 0 }}g</td>
                                             <td style="color:var(--purple);font-weight:800">{{ item.nutritional_info?.fat || 0 }}g</td>
-                                            <td style="font-weight:800">R$ {{ item.base_price?.toFixed(2).replace('.',',') }}</td>
+                                            <td style="font-weight:800">R$ {{ Number(item.base_price || 0).toFixed(2).replace('.',',') }}</td>
                                         </tr>
                                     </tbody>
                                 </table>
@@ -1101,8 +2298,6 @@
                                 </table>
                             </div>
                         </div>
-
-                    </transition>
                 </main>
 
             </div>
@@ -1120,7 +2315,7 @@
         const API = '/api';
         const { createApp } = Vue;
 
-        createApp({
+        const vueApp = createApp({
             data() {
                 return {
                     route: 'login',
@@ -1133,7 +2328,7 @@
                     userProfile: {},
                     toastMessage: '',
 
-                    // Consumidor
+                    // Consumidor & Localização
                     restrictions: [],
                     dietItems: [],
                     dietPlan: null,
@@ -1142,17 +2337,134 @@
                     cartFilter: '',
                     routingResult: {},
                     isMatching: false,
+                    matchingStep: '',
+                    isLocating: false,
+                    locationSource: 'cep',
+                    currentAddress: 'Avenida Brigadeiro Faria Lima - Itaim Bibi, São Paulo - SP',
+                    currentCep: '04538-133',
+                    currentCoords: { lat: -23.5855, lng: -46.6784 },
+                    showLocationModal: false,
+                    searchCepInput: '',
+                    expandedMarketId: null,
+                    selectedMarketId: null,
+                    selectedMarket: null,
+                    navigationSteps: [],
+                    isRouting: false,
+                    mapInstance: null,
+                    mapMarkersLayer: null,
+                    cartMapInstance: null,
+                    cartMapMarkersLayer: null,
+                    fulfillmentMode: 'delivery',
+                    showDeliveryModal: false,
+                    deliveryOrder: null,
+                    deliveryStep: 1,
+                    deliveryTimer: null,
+                    showCheckoutModal: false,
+                    checkoutMarket: null,
+                    paymentMethod: 'pix',
+                    couponCode: '',
+                    appliedCoupon: null,
+                    deliverySchedule: 'express',
+                    cardForm: {
+                        number: '4532 8920 1144 7829',
+                        name: 'ANDRE SUHAI',
+                        expiry: '08/29',
+                        cvv: '842',
+                        installments: '1'
+                    },
+                    pixTimerSeconds: 899,
+                    pixTimerInterval: null,
+                    pixCodeString: '00020126580014br.gov.bcb.pix0136smartdiet-pay-7a892b@insper.edu.br5204000053039865405345.505802BR5920SMARTDIET PAY SAO PA6009SAO PAULO62070503***6304E8A2',
+                    isProcessingPayment: false,
+                    locationPresets: [
+                        { name: 'Itaim Bibi (Faria Lima)', cep: '04538-133', bairro: 'Itaim Bibi' },
+                        { name: 'Pinheiros (Rebouças)', cep: '05408-010', bairro: 'Pinheiros' },
+                        { name: 'Moema (Ibirapuera)', cep: '04012-000', bairro: 'Moema' },
+                        { name: 'Jardins (Oscar Freire)', cep: '01452-000', bairro: 'Jardins' },
+                        { name: 'Bela Vista / Paulista', cep: '01310-100', bairro: 'Bela Vista' }
+                    ],
 
                     // Nutricionista
-                    patientsList: [],
+                    patientsList: [
+                        { id: 2, name: 'André Suhai', email: 'paciente@demo.com', goal: 'Hipertrofia Muscular', target_kcal: 2150, target_protein: 160, target_carbs: 220, target_fat: 65, active_diet_title: 'Hipertrofia Muscular & Bulking Limpo', restrictions: [{ id: 1, tag_name: 'Sem Glúten', color: 'yellow' }, { id: 2, tag_name: 'Zero Lactose', color: 'blue' }, { id: 4, tag_name: 'Hipertrofia', color: 'purple' }] },
+                        { id: 6, name: 'Camila Rodrigues', email: 'camila@demo.com', goal: 'Emagrecimento & Definição', target_kcal: 1600, target_protein: 130, target_carbs: 140, target_fat: 45, active_diet_title: 'Déficit Calórico & Definição', restrictions: [{ id: 1, tag_name: 'Sem Glúten', color: 'yellow' }, { id: 6, tag_name: 'Zero Açúcar', color: 'green' }] },
+                        { id: 7, name: 'Lucas Ferraz', email: 'lucas@demo.com', goal: 'Performance & Low Carb', target_kcal: 1800, target_protein: 140, target_carbs: 50, target_fat: 110, active_diet_title: 'Low Carb Terapêutica', restrictions: [{ id: 5, tag_name: 'Low Carb', color: 'orange' }] }
+                    ],
                     selectedPatientId: 2,
-                    allTagsList: [],
-                    catalogProducts: [],
+                    allTagsList: [
+                        { id: 1, tag_name: 'Sem Glúten', icon: 'fa-wheat-awn-circle-exclamation', color: 'yellow' },
+                        { id: 2, tag_name: 'Zero Lactose', icon: 'fa-ban', color: 'blue' },
+                        { id: 3, tag_name: 'Vegano', icon: 'fa-seedling', color: 'green' },
+                        { id: 4, tag_name: 'Hipertrofia', icon: 'fa-dumbbell', color: 'purple' },
+                        { id: 5, tag_name: 'Low Carb', icon: 'fa-fire', color: 'orange' },
+                        { id: 6, tag_name: 'Zero Açúcar', icon: 'fa-cubes-stacked', color: 'red' },
+                        { id: 7, tag_name: 'Orgânico', icon: 'fa-leaf', color: 'green' }
+                    ],
+                    catalogProducts: [
+                        { id: 1, name: 'Whey Protein Isolado 900g', brand: 'Dux Nutrition', category: 'Suplementos', base_price: 189.90, nutritional_info: { kcal: 380, prot: 80, carb: 5, fat: 2 } },
+                        { id: 2, name: 'Creatina Monohidratada 300g', brand: 'Creapure', category: 'Suplementos', base_price: 99.90, nutritional_info: { kcal: 0, prot: 0, carb: 0, fat: 0 } },
+                        { id: 3, name: 'Leite de Amêndoas Sem Açúcar 1L', brand: 'Silk', category: 'Laticínios Veganos', base_price: 18.50, nutritional_info: { kcal: 24, prot: 0.8, carb: 0.3, fat: 2.1 } },
+                        { id: 4, name: 'Peito de Frango Orgânico 1kg', brand: 'Korin', category: 'Carnes', base_price: 32.90, nutritional_info: { kcal: 140, prot: 28, carb: 0, fat: 2.5 } },
+                        { id: 5, name: 'Aveia em Flocos Sem Glúten 500g', brand: 'Vitalin', category: 'Cereais', base_price: 16.90, nutritional_info: { kcal: 365, prot: 14, carb: 62, fat: 7 } },
+                        { id: 6, name: 'Pasta de Amendoim Integral 500g', brand: 'Dr. Peanut', category: 'Lanches', base_price: 26.50, nutritional_info: { kcal: 590, prot: 26, carb: 18, fat: 50 } },
+                        { id: 7, name: 'Iogurte Grego Zero Lactose 400g', brand: 'Yorgus', category: 'Laticínios', base_price: 14.90, nutritional_info: { kcal: 68, prot: 10, carb: 5, fat: 0.5 } },
+                        { id: 8, name: 'Batata Doce Orgânica 1kg', brand: 'Fazenda da Toca', category: 'Vegetais', base_price: 9.80, nutritional_info: { kcal: 86, prot: 1.6, carb: 20, fat: 0.1 } },
+                        { id: 9, name: 'Ovos Caipiras Orgânicos 12 un', brand: 'Raiar Orgânicos', category: 'Proteínas', base_price: 16.90, nutritional_info: { kcal: 145, prot: 13, carb: 0.7, fat: 10 } },
+                        { id: 10, name: 'Mix de Folhas Orgânicas 200g', brand: 'Quitanda', category: 'Vegetais', base_price: 8.90, nutritional_info: { kcal: 35, prot: 3, carb: 7, fat: 0.5 } },
+                        { id: 11, name: 'Tofu Orgânico Firme 400g', brand: 'Ecobras', category: 'Proteínas', base_price: 19.90, nutritional_info: { kcal: 120, prot: 14, carb: 3, fat: 6 } },
+                        { id: 12, name: 'Filé de Salmão Fresco 500g', brand: 'Costa Sul', category: 'Carnes', base_price: 48.90, nutritional_info: { kcal: 208, prot: 20, carb: 0, fat: 13 } },
+                        { id: 13, name: 'Arroz Integral Cateto 1kg', brand: 'Mãe Terra', category: 'Cereais', base_price: 12.50, nutritional_info: { kcal: 130, prot: 3, carb: 28, fat: 1 } },
+                        { id: 14, name: 'Castanha do Pará Orgânica 150g', brand: 'Biovida', category: 'Lanches', base_price: 24.90, nutritional_info: { kcal: 610, prot: 18, carb: 12, fat: 54 } }
+                    ],
                     catalogSearch: '',
-                    clinicalProtocols: [],
+                    clinicalProtocols: [
+                        { id: 'hipertrofia', name: 'Hipertrofia Muscular & Bulking Limpo', target_kcal: 2150, target_protein: 160, target_carbs: 220, target_fat: 65, goal: 'Hipertrofia Muscular', recommended_tags: [1, 2, 4], notes: 'Superávit calórico controlado.', meals: [
+                            { meal_name: 'Café da Manhã (Ovos)', meal_time: '07:30', product_id: 9, qty_grams: 150 },
+                            { meal_name: 'Acompanhamento Café', meal_time: '07:30', product_id: 5, qty_grams: 70 },
+                            { meal_name: 'Shake Pós-Treino', meal_time: '10:00', product_id: 1, qty_grams: 40 },
+                            { meal_name: 'Almoço (Peito de Frango)', meal_time: '13:00', product_id: 4, qty_grams: 180 },
+                            { meal_name: 'Carboidrato Almoço', meal_time: '13:00', product_id: 13, qty_grams: 220 },
+                            { meal_name: 'Lanche da Tarde', meal_time: '16:30', product_id: 7, qty_grams: 200 },
+                            { meal_name: 'Gorduras Boas Tarde', meal_time: '16:30', product_id: 6, qty_grams: 30 },
+                            { meal_name: 'Jantar (Salmão Fresco)', meal_time: '20:00', product_id: 12, qty_grams: 160 },
+                            { meal_name: 'Carboidrato Jantar', meal_time: '20:00', product_id: 8, qty_grams: 250 }
+                        ] },
+                        { id: 'emagrecimento', name: 'Déficit Calórico & Definição', target_kcal: 1600, target_protein: 130, target_carbs: 140, target_fat: 45, goal: 'Emagrecimento & Definição', recommended_tags: [1, 2, 6], notes: 'Déficit estruturado.', meals: [
+                            { meal_name: 'Café da Manhã (Ovos)', meal_time: '08:00', product_id: 9, qty_grams: 100 },
+                            { meal_name: 'Acompanhamento Café', meal_time: '08:00', product_id: 5, qty_grams: 45 },
+                            { meal_name: 'Almoço (Peito de Frango)', meal_time: '12:30', product_id: 4, qty_grams: 160 },
+                            { meal_name: 'Carboidrato Almoço', meal_time: '12:30', product_id: 13, qty_grams: 150 },
+                            { meal_name: 'Vegetais Almoço', meal_time: '12:30', product_id: 10, qty_grams: 150 },
+                            { meal_name: 'Lanche da Tarde', meal_time: '16:00', product_id: 7, qty_grams: 180 },
+                            { meal_name: 'Castanhas Tarde', meal_time: '16:00', product_id: 14, qty_grams: 20 },
+                            { meal_name: 'Jantar (Salmão)', meal_time: '19:30', product_id: 12, qty_grams: 140 },
+                            { meal_name: 'Carboidrato Jantar', meal_time: '19:30', product_id: 8, qty_grams: 160 }
+                        ] },
+                        { id: 'low_carb', name: 'Low Carb Terapêutica / Cetogênica', target_kcal: 1800, target_protein: 140, target_carbs: 50, target_fat: 110, goal: 'Performance & Low Carb', recommended_tags: [1, 2, 5, 6], notes: 'Baixo carboidrato.', meals: [
+                            { meal_name: 'Café da Manhã (Ovos)', meal_time: '08:00', product_id: 9, qty_grams: 160 },
+                            { meal_name: 'Gorduras Café', meal_time: '08:00', product_id: 6, qty_grams: 30 },
+                            { meal_name: 'Almoço (Salmão Fresco)', meal_time: '12:30', product_id: 12, qty_grams: 200 },
+                            { meal_name: 'Vegetais Almoço', meal_time: '12:30', product_id: 10, qty_grams: 200 },
+                            { meal_name: 'Lanche (Whey Isolado)', meal_time: '16:30', product_id: 1, qty_grams: 35 },
+                            { meal_name: 'Mix Castanhas Tarde', meal_time: '16:30', product_id: 14, qty_grams: 40 },
+                            { meal_name: 'Jantar (Peito de Frango)', meal_time: '20:00', product_id: 4, qty_grams: 180 },
+                            { meal_name: 'Gorduras Jantar', meal_time: '20:00', product_id: 6, qty_grams: 30 }
+                        ] },
+                        { id: 'plant_based', name: 'Plant-Based & Hipertrofia Vegana', target_kcal: 1900, target_protein: 135, target_carbs: 230, target_fat: 55, goal: 'Hipertrofia Plant-Based', recommended_tags: [1, 2, 3, 7], notes: 'Dieta vegetal completa.', meals: [
+                            { meal_name: 'Café (Leite de Amêndoas)', meal_time: '07:30', product_id: 3, qty_grams: 250 },
+                            { meal_name: 'Aveia S/ Glúten', meal_time: '07:30', product_id: 5, qty_grams: 75 },
+                            { meal_name: 'Almoço (Tofu Firme)', meal_time: '12:30', product_id: 11, qty_grams: 220 },
+                            { meal_name: 'Carboidrato Almoço', meal_time: '12:30', product_id: 13, qty_grams: 250 },
+                            { meal_name: 'Vegetais Almoço', meal_time: '12:30', product_id: 10, qty_grams: 150 },
+                            { meal_name: 'Lanche da Tarde', meal_time: '16:00', product_id: 6, qty_grams: 30 },
+                            { meal_name: 'Castanhas Tarde', meal_time: '16:00', product_id: 14, qty_grams: 30 },
+                            { meal_name: 'Jantar (Tofu Orgânico)', meal_time: '19:30', product_id: 11, qty_grams: 180 },
+                            { meal_name: 'Carboidrato Jantar', meal_time: '19:30', product_id: 8, qty_grams: 240 }
+                        ] }
+                    ],
                     currentDiet: {
                         patient_id: 2,
-                        title: 'Plano Hipertrofia — Fase Bulking Limpo',
+                        title: 'Hipertrofia Muscular & Bulking Limpo',
                         goal: 'Hipertrofia Muscular',
                         target_kcal: 2150,
                         target_protein: 160,
@@ -1160,7 +2472,17 @@
                         target_fat: 65,
                         notes: 'Foco em ganho de massa magra com controle rigoroso de glúten e lactose.',
                         restriction_tag_ids: [1, 2, 4],
-                        meals: []
+                        meals: [
+                            { meal_name: 'Café da Manhã (Ovos)',       meal_time: '07:30', recommended_product_id: 9,  qty_grams: 150 },
+                            { meal_name: 'Acompanhamento Café',        meal_time: '07:30', recommended_product_id: 5,  qty_grams: 70 },
+                            { meal_name: 'Shake Pós-Treino',           meal_time: '10:00', recommended_product_id: 1,  qty_grams: 40 },
+                            { meal_name: 'Almoço (Peito de Frango)',   meal_time: '13:00', recommended_product_id: 4,  qty_grams: 180 },
+                            { meal_name: 'Carboidrato Almoço',         meal_time: '13:00', recommended_product_id: 13, qty_grams: 220 },
+                            { meal_name: 'Lanche da Tarde',            meal_time: '16:30', recommended_product_id: 7,  qty_grams: 200 },
+                            { meal_name: 'Gorduras Boas Tarde',        meal_time: '16:30', recommended_product_id: 6,  qty_grams: 30 },
+                            { meal_name: 'Jantar (Salmão Fresco)',     meal_time: '20:00', recommended_product_id: 12, qty_grams: 160 },
+                            { meal_name: 'Carboidrato Jantar',         meal_time: '20:00', recommended_product_id: 8,  qty_grams: 250 }
+                        ]
                     },
 
                     // Varejo B2B
@@ -1170,6 +2492,11 @@
 
                     todayFormatted: new Date().toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' }),
                 };
+            },
+
+            mounted() {
+                // Busca automaticamente a localização exata do dispositivo ao carregar o app
+                this.fetchExactDeviceLocationOnLoad();
             },
 
             computed: {
@@ -1189,42 +2516,64 @@
                     return this.filteredCartItems.reduce((s, i) => s + (i.base_price || 0), 0);
                 },
                 filteredInventory() {
+                    if (!Array.isArray(this.inventory)) return [];
                     if (!this.invFilter) return this.inventory;
                     const q = this.invFilter.toLowerCase();
-                    return this.inventory.filter(i => i.name.toLowerCase().includes(q) || i.category.toLowerCase().includes(q));
+                    return this.inventory.filter(i => (i?.name || '').toLowerCase().includes(q) || (i?.category || '').toLowerCase().includes(q));
                 },
                 filteredCatalog() {
+                    if (!Array.isArray(this.catalogProducts)) return [];
                     if (!this.catalogSearch) return this.catalogProducts;
                     const q = this.catalogSearch.toLowerCase();
-                    return this.catalogProducts.filter(i => i.name.toLowerCase().includes(q) || i.category.toLowerCase().includes(q));
+                    return this.catalogProducts.filter(i => (i?.name || '').toLowerCase().includes(q) || (i?.category || '').toLowerCase().includes(q));
                 },
                 totalPrescribedKcal() {
+                    if (!this.currentDiet?.meals || !Array.isArray(this.currentDiet.meals)) return 0;
                     return Math.round(this.currentDiet.meals.reduce((sum, m) => {
-                        const prod = this.catalogProducts.find(p => p.id === m.recommended_product_id);
+                        const prod = (this.catalogProducts || []).find(p => p.id === m.recommended_product_id);
                         const kcal = prod?.nutritional_info?.kcal || 0;
                         return sum + (kcal * (m.qty_grams || 100) / 100);
                     }, 0));
                 },
                 totalPrescribedProt() {
+                    if (!this.currentDiet?.meals || !Array.isArray(this.currentDiet.meals)) return 0;
                     return Math.round(this.currentDiet.meals.reduce((sum, m) => {
-                        const prod = this.catalogProducts.find(p => p.id === m.recommended_product_id);
+                        const prod = (this.catalogProducts || []).find(p => p.id === m.recommended_product_id);
                         const prot = prod?.nutritional_info?.prot || 0;
                         return sum + (prot * (m.qty_grams || 100) / 100);
                     }, 0));
                 },
                 totalPrescribedCarb() {
+                    if (!this.currentDiet?.meals || !Array.isArray(this.currentDiet.meals)) return 0;
                     return Math.round(this.currentDiet.meals.reduce((sum, m) => {
-                        const prod = this.catalogProducts.find(p => p.id === m.recommended_product_id);
+                        const prod = (this.catalogProducts || []).find(p => p.id === m.recommended_product_id);
                         const carb = prod?.nutritional_info?.carb || 0;
                         return sum + (carb * (m.qty_grams || 100) / 100);
                     }, 0));
                 },
                 totalPrescribedFat() {
+                    if (!this.currentDiet?.meals || !Array.isArray(this.currentDiet.meals)) return 0;
                     return Math.round(this.currentDiet.meals.reduce((sum, m) => {
-                        const prod = this.catalogProducts.find(p => p.id === m.recommended_product_id);
+                        const prod = (this.catalogProducts || []).find(p => p.id === m.recommended_product_id);
                         const fat = prod?.nutritional_info?.fat || 0;
                         return sum + (fat * (m.qty_grams || 100) / 100);
                     }, 0));
+                },
+                checkoutSubtotal() {
+                    return this.checkoutMarket?.total_price || this.cartTotal || 345.50;
+                },
+                checkoutDiscount() {
+                    let disc = 0;
+                    if (this.appliedCoupon) {
+                        disc += this.checkoutSubtotal * (this.appliedCoupon.discountPct || 0);
+                    }
+                    if (this.paymentMethod === 'pix') {
+                        disc += this.checkoutSubtotal * 0.03;
+                    }
+                    return disc;
+                },
+                checkoutFinalTotal() {
+                    return Math.max(0, this.checkoutSubtotal - this.checkoutDiscount);
                 }
             },
 
@@ -1250,15 +2599,26 @@
                             this.userRole = data.user.role;
                             if (this.userRole === 'consumer') {
                                 this.tab = 'home';
-                                await this.loadConsumerData();
                             } else if (this.userRole === 'nutritionist') {
                                 this.tab = 'nutri_prescription';
-                                await this.loadNutritionistData();
                             } else {
                                 this.tab = 'analytics';
-                                await this.loadAnalytics();
                             }
-                            setTimeout(() => { this.route = 'dashboard'; this.isLogging = false; }, 400);
+                            this.route = 'dashboard';
+                            this.isLogging = false;
+
+                            // Carregamento de dados em segundo plano
+                            try {
+                                if (this.userRole === 'consumer') {
+                                    await this.loadConsumerData();
+                                } else if (this.userRole === 'nutritionist') {
+                                    await this.loadNutritionistData();
+                                } else {
+                                    await this.loadAnalytics();
+                                }
+                            } catch (e) {
+                                console.warn('[SmartDiet] Erro de background loading:', e);
+                            }
                         } else {
                             this.loginError = data.message;
                             this.isLogging = false;
@@ -1279,16 +2639,33 @@
                     this.user = {};
                     this.loginForm.email = '';
                     this.routingResult = {};
+                    if (this.mapInstance) {
+                        this.mapInstance.remove();
+                        this.mapInstance = null;
+                    }
                 },
 
                 // ── NAVEGAÇÃO ──
                 async gotoTab(t) {
+                    console.log('%c[SmartDiet Navigation]', 'background:#38BDF8;color:#000;font-weight:bold;padding:2px 8px;border-radius:4px;', `Mudando para aba: "${t}" | Perfil: "${this.userRole}" | Usuário: "${this.user?.name}"`);
                     this.tab = t;
                     if (this.userRole === 'consumer') {
                         if (t === 'home') await this.loadProgress();
                         if (t === 'diet') await this.loadDiet();
                         if (t === 'profile') await this.loadProfile();
+                        if (t === 'cart') {
+                            this.buildCart();
+                            this.initCartPreviewMap();
+                        }
+                        if (t === 'routes') {
+                            this.initOrUpdateMap();
+                        }
                     } else if (this.userRole === 'nutritionist') {
+                        if (t === 'nutri_prescription') {
+                            if (!this.catalogProducts?.length || !this.patientsList?.length) {
+                                await this.loadNutritionistData();
+                            }
+                        }
                         if (t === 'nutri_patients') await this.loadPatients();
                         if (t === 'nutri_catalog') await this.loadCatalog();
                     } else if (this.userRole === 'market') {
@@ -1297,9 +2674,586 @@
                     }
                 },
 
+                // ── LOCALIZAÇÃO EXATA DO DISPOSITIVO & GPS ──
+                fetchExactDeviceLocationOnLoad() {
+                    if (!navigator.geolocation) return;
+                    navigator.geolocation.getCurrentPosition(
+                        async (pos) => {
+                            const lat = pos.coords.latitude;
+                            const lng = pos.coords.longitude;
+                            this.currentCoords = { lat, lng };
+                            try {
+                                const res = await fetch(`${API}/location/resolve`, {
+                                    method: 'POST',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({ lat, lng })
+                                });
+                                const data = await res.json();
+                                if (res.ok && data.location) {
+                                    this.currentAddress = data.location.address;
+                                    this.currentCep = data.location.cep;
+                                    this.locationSource = 'gps';
+                                    if (this.userProfile) this.userProfile.cep = data.location.cep;
+                                    if (this.tab === 'cart') this.initCartPreviewMap();
+                                    if (this.tab === 'routes') this.initOrUpdateMap();
+                                }
+                            } catch (e) {
+                                console.warn('Falha ao resolver endereço inicial:', e);
+                            }
+                        },
+                        (err) => {
+                            console.warn('Geolocalização não autorizada no boot:', err.message);
+                        },
+                        { enableHighAccuracy: true, timeout: 6000 }
+                    );
+                },
+
+                openLocationModal() {
+                    this.searchCepInput = this.currentCep || '';
+                    this.showLocationModal = true;
+                },
+                async fetchUserGPS(andMatch = false) {
+                    this.isLocating = true;
+                    if (!navigator.geolocation) {
+                        this.showToast('⚠️ Geolocalização não suportada no seu navegador.');
+                        this.isLocating = false;
+                        if (andMatch) this.runAlgorithm();
+                        return;
+                    }
+
+                    this.showToast('📡 Acessando sensor GPS do dispositivo...');
+                    navigator.geolocation.getCurrentPosition(
+                        async (position) => {
+                            const lat = position.coords.latitude;
+                            const lng = position.coords.longitude;
+                            this.currentCoords = { lat, lng };
+
+                            try {
+                                const res = await fetch(`${API}/location/resolve`, {
+                                    method: 'POST',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({ lat, lng })
+                                });
+                                const data = await res.json();
+                                if (res.ok && data.location) {
+                                    this.currentAddress = data.location.address;
+                                    this.currentCep = data.location.cep;
+                                    this.locationSource = 'gps';
+                                    if (this.userProfile) this.userProfile.cep = data.location.cep;
+                                    this.showToast(`✓ Localização GPS fixada: ${data.location.neighborhood || data.location.city}`);
+                                    if (this.tab === 'cart') this.initCartPreviewMap();
+                                    if (this.tab === 'routes') this.initOrUpdateMap();
+                                }
+                            } catch (e) {
+                                console.error('Erro ao resolver endereço GPS:', e);
+                            } finally {
+                                this.isLocating = false;
+                                if (andMatch) this.runAlgorithm();
+                            }
+                        },
+                        (error) => {
+                            console.warn('GPS negado/indisponível:', error);
+                            this.isLocating = false;
+                            this.showToast('📍 Usando endereço salvo (Permissão de GPS negada).');
+                            if (andMatch) this.runAlgorithm();
+                        },
+                        { timeout: 8000, enableHighAccuracy: true }
+                    );
+                },
+                async resolveLocationByCep(cep, andMatch = false) {
+                    this.isLocating = true;
+                    try {
+                        const res = await fetch(`${API}/location/resolve`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ cep })
+                        });
+                        const data = await res.json();
+                        if (res.ok && data.location) {
+                            this.currentAddress = data.location.address;
+                            this.currentCep = data.location.cep;
+                            this.currentCoords = { lat: data.location.lat, lng: data.location.lng };
+                            this.locationSource = 'cep';
+                            if (this.userProfile) this.userProfile.cep = data.location.cep;
+                            if (this.tab === 'cart') this.initCartPreviewMap();
+                            if (this.tab === 'routes') this.initOrUpdateMap();
+                        }
+                    } catch (e) {
+                        console.error('Erro ao resolver CEP:', e);
+                    } finally {
+                        this.isLocating = false;
+                        if (andMatch) this.runAlgorithm();
+                    }
+                },
+                applyLocationPreset(preset, andMatch = false) {
+                    this.currentCep = preset.cep;
+                    this.showToast(`📍 Região alterada para: ${preset.name}`);
+                    this.resolveLocationByCep(preset.cep, andMatch);
+                },
+                async saveCustomAddress() {
+                    const input = (this.searchCepInput || '').trim();
+                    if (!input) return;
+                    this.isLocating = true;
+                    try {
+                        const res = await fetch(`${API}/location/resolve`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ cep: input, address: input })
+                        });
+                        const data = await res.json();
+                        if (res.ok && data.location) {
+                            this.currentAddress = data.location.address;
+                            this.currentCep = data.location.cep;
+                            this.currentCoords = { lat: data.location.lat, lng: data.location.lng };
+                            this.locationSource = 'manual';
+                            if (this.userProfile) this.userProfile.cep = data.location.cep;
+                            this.showToast(`✓ Endereço atualizado: ${data.location.neighborhood || data.location.address}`);
+                            this.showLocationModal = false;
+                            this.runAlgorithm();
+                        }
+                    } catch (e) {
+                        console.error(e);
+                    } finally {
+                        this.isLocating = false;
+                    }
+                },
+                toggleMarketExpand(marketId) {
+                    this.expandedMarketId = this.expandedMarketId === marketId ? null : marketId;
+                },
+
+                // ── PREVIEW DO MAPA NA TELA DE SELEÇÃO / CARRINHO ──
+                initCartPreviewMap() {
+                    this.$nextTick(() => {
+                        setTimeout(() => {
+                            const container = document.getElementById('cartPreviewMap');
+                            if (!container || typeof L === 'undefined') return;
+
+                            if (container._leaflet_id) {
+                                container._leaflet_id = null;
+                            }
+                            if (this.cartMapInstance) {
+                                try { this.cartMapInstance.remove(); } catch(e) {}
+                                this.cartMapInstance = null;
+                            }
+
+                            const uLat = this.currentCoords?.lat || -23.5855;
+                            const uLng = this.currentCoords?.lng || -46.6784;
+
+                            try {
+                                this.cartMapInstance = L.map('cartPreviewMap', {
+                                    zoomControl: true,
+                                    attributionControl: false
+                                }).setView([uLat, uLng], 14);
+
+                                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                                    maxZoom: 19,
+                                    attribution: '© OpenStreetMap'
+                                }).addTo(this.cartMapInstance);
+
+                                this.cartMapMarkersLayer = L.layerGroup().addTo(this.cartMapInstance);
+
+                                // Pin do usuário
+                                const userIcon = L.divIcon({
+                                    className: 'custom-user-marker',
+                                    html: '<i class="fa-solid fa-house-user"></i>',
+                                    iconSize: [34, 34],
+                                    iconAnchor: [17, 17]
+                                });
+                                L.marker([uLat, uLng], { icon: userIcon })
+                                    .bindPopup(`<b>📍 Seu Endereço</b><br><span style="font-size:0.8rem;color:#94a3b8">${this.currentAddress}</span>`)
+                                    .addTo(this.cartMapMarkersLayer);
+
+                                // Raio de cobertura estimada (2.5 km)
+                                L.circle([uLat, uLng], {
+                                    radius: 2500,
+                                    color: '#16C47F',
+                                    fillColor: '#16C47F',
+                                    fillOpacity: 0.08,
+                                    weight: 1.5,
+                                    dashArray: '4, 6'
+                                }).addTo(this.cartMapMarkersLayer);
+
+                                // Adiciona supermercados se já foram cotados
+                                const routes = this.routingResult?.routes || [];
+                                routes.forEach(m => {
+                                    if (!m.lat || !m.lng) return;
+                                    const mIcon = L.divIcon({
+                                        className: 'custom-market-marker',
+                                        html: `<i class="${m.brand.includes('Minuto') ? 'fa-solid fa-bolt' : 'fa-solid fa-store'}"></i>`,
+                                        iconSize: [34, 34],
+                                        iconAnchor: [17, 17]
+                                    });
+                                    L.marker([m.lat, m.lng], { icon: mIcon })
+                                        .bindPopup(`<b>${m.brand} (${m.branch})</b><br><span style="font-size:0.75rem;color:#94a3b8">${m.address}</span><br><b>${m.distance_km} km de você</b>`)
+                                        .addTo(this.cartMapMarkersLayer);
+                                });
+
+                                setTimeout(() => {
+                                    if (this.cartMapInstance) this.cartMapInstance.invalidateSize();
+                                }, 250);
+                            } catch (err) {
+                                console.error('Erro no cart preview map:', err);
+                            }
+                        }, 150);
+                    });
+                },
+
+                // ── MAPA INTERATIVO LEAFLET & GUIA DE ROTA (OSRM) ──
+                initOrUpdateMap() {
+                    this.$nextTick(() => {
+                        setTimeout(async () => {
+                            const mapContainer = document.getElementById('realRouteMap');
+                            if (!mapContainer || typeof L === 'undefined') return;
+
+                            if (mapContainer._leaflet_id) {
+                                mapContainer._leaflet_id = null;
+                            }
+                            if (this.mapInstance) {
+                                try { this.mapInstance.remove(); } catch (e) {}
+                                this.mapInstance = null;
+                            }
+
+                            const uLat = this.currentCoords?.lat || -23.5855;
+                            const uLng = this.currentCoords?.lng || -46.6784;
+
+                            try {
+                                this.mapInstance = L.map('realRouteMap', {
+                                    zoomControl: true,
+                                    attributionControl: false
+                                }).setView([uLat, uLng], 14);
+
+                                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                                    maxZoom: 19,
+                                    attribution: '© OpenStreetMap'
+                                }).addTo(this.mapInstance);
+
+                                this.mapMarkersLayer = L.layerGroup().addTo(this.mapInstance);
+
+                                setTimeout(() => {
+                                    if (this.mapInstance) this.mapInstance.invalidateSize();
+                                }, 250);
+
+                                await this.drawMapRoute();
+                            } catch (e) {
+                                console.error('Erro ao inicializar route map:', e);
+                            }
+                        }, 150);
+                    });
+                },
+
+                async drawMapRoute() {
+                    if (!this.mapInstance || !this.mapMarkersLayer) return;
+                    this.mapMarkersLayer.clearLayers();
+
+                    const uLat = this.currentCoords?.lat || -23.5855;
+                    const uLng = this.currentCoords?.lng || -46.6784;
+                    const activeMarket = this.selectedMarket || (this.routingResult?.routes ? this.routingResult.routes[0] : null);
+
+                    // 1. Adiciona Pin do Usuário (Local Exato do Dispositivo)
+                    const userIcon = L.divIcon({
+                        className: 'custom-user-marker',
+                        html: '<i class="fa-solid fa-house-user"></i>',
+                        iconSize: [34, 34],
+                        iconAnchor: [17, 17]
+                    });
+                    L.marker([uLat, uLng], { icon: userIcon })
+                        .bindPopup(`<b>📍 Seu Ponto de Partida</b><br><span style="font-size:0.8rem;color:#94a3b8">${this.currentAddress}</span>`)
+                        .addTo(this.mapMarkersLayer);
+
+                    // 2. Adiciona Pins de todos os mercados cotados
+                    const routes = this.routingResult?.routes || [];
+                    routes.forEach(m => {
+                        if (!m.lat || !m.lng) return;
+                        const isSelected = activeMarket && (activeMarket.market_id === m.market_id);
+                        const mIcon = L.divIcon({
+                            className: 'custom-market-marker' + (isSelected ? ' selected' : ''),
+                            html: `<i class="${m.brand.includes('Minuto') ? 'fa-solid fa-bolt' : 'fa-solid fa-store'}"></i>`,
+                            iconSize: [38, 38],
+                            iconAnchor: [19, 19]
+                        });
+
+                        const marker = L.marker([m.lat, m.lng], { icon: mIcon }).addTo(this.mapMarkersLayer);
+                        marker.bindPopup(`
+                            <div style="font-weight:900;font-size:0.95rem">${m.brand} (${m.branch})</div>
+                            <div style="font-size:0.75rem;color:#94a3b8;margin:2px 0 6px">${m.address}</div>
+                            <div style="font-size:0.85rem;color:#16C47F;font-weight:800">Cesta: R$ ${m.total_price.toFixed(2).replace('.',',')}</div>
+                            <div style="font-size:0.75rem;color:#38BDF8">Distância: ${m.distance_km} km (~${m.travel_time_min} min)</div>
+                        `);
+                        marker.on('click', () => { this.selectMarket(m); });
+                    });
+
+                    if (!activeMarket || !activeMarket.lat || !activeMarket.lng) {
+                        this.mapInstance.setView([uLat, uLng], 14);
+                        return;
+                    }
+
+                    const mLat = activeMarket.lat;
+                    const mLng = activeMarket.lng;
+
+                    // 3. Traça rota real pelas ruas via OSRM
+                    this.isRouting = true;
+                    this.navigationSteps = [];
+
+                    try {
+                        const osrmUrl = `https://router.project-osrm.org/route/v1/driving/${uLng},${uLat};${mLng},${mLat}?overview=full&geometries=geojson&steps=true`;
+                        const res = await fetch(osrmUrl);
+                        const osrmData = await res.json();
+
+                        if (osrmData.code === 'Ok' && osrmData.routes?.length > 0) {
+                            const route = osrmData.routes[0];
+
+                            // Desenha a linha da rota no mapa
+                            L.geoJSON(route.geometry, {
+                                style: {
+                                    color: '#16C47F',
+                                    weight: 6,
+                                    opacity: 0.9,
+                                    lineCap: 'round',
+                                    lineJoin: 'round'
+                                }
+                            }).addTo(this.mapMarkersLayer);
+
+                            // Ajusta o enquadramento do mapa para mostrar você e o mercado
+                            this.mapInstance.fitBounds([[uLat, uLng], [mLat, mLng]], { padding: [50, 50] });
+
+                            // Converte os passos da rota para instruções em português
+                            const steps = route.legs[0]?.steps || [];
+                            const parsedSteps = [];
+
+                            steps.forEach((s, idx) => {
+                                const mType = s.maneuver?.type || '';
+                                const mMod = s.maneuver?.modifier || '';
+                                const sName = s.name ? `"${s.name}"` : 'a via principal';
+                                const distMeters = Math.round(s.distance);
+                                const distStr = distMeters >= 1000 ? (distMeters/1000).toFixed(1) + ' km' : distMeters + ' m';
+
+                                let instruction = '';
+                                let icon = 'fa-solid fa-arrow-up';
+
+                                if (idx === 0 || mType === 'depart') {
+                                    instruction = `Inicie o trajeto a partir de ${this.currentAddress.split('-')[0] || 'sua localização'}`;
+                                    icon = 'fa-solid fa-play';
+                                } else if (mType === 'arrive' || idx === steps.length - 1) {
+                                    instruction = `Destino: Chegada em ${activeMarket.brand} (${activeMarket.branch}) à sua frente`;
+                                    icon = 'fa-solid fa-location-dot';
+                                } else if (mMod.includes('right')) {
+                                    instruction = `Vire à direita em ${sName}`;
+                                    icon = 'fa-solid fa-arrow-turn-down-right';
+                                } else if (mMod.includes('left')) {
+                                    instruction = `Vire à esquerda em ${sName}`;
+                                    icon = 'fa-solid fa-turn-left';
+                                } else if (mType === 'roundabout') {
+                                    instruction = `Na rotatória, siga em direção a ${sName}`;
+                                    icon = 'fa-solid fa-arrows-spin';
+                                } else {
+                                    instruction = `Siga em frente pela ${sName}`;
+                                    icon = 'fa-solid fa-arrow-up';
+                                }
+
+                                if (distMeters > 5 || idx === steps.length - 1) {
+                                    parsedSteps.push({ instruction, icon, distance: distStr });
+                                }
+                            });
+
+                            this.navigationSteps = parsedSteps;
+                        } else {
+                            throw new Error('OSRM fallback');
+                        }
+                    } catch (e) {
+                        // Linha direta de fallback caso conexão OSRM falhe
+                        L.polyline([[uLat, uLng], [mLat, mLng]], {
+                            color: '#16C47F',
+                            weight: 5,
+                            dashArray: '8, 8',
+                            opacity: 0.85
+                        }).addTo(this.mapMarkersLayer);
+
+                        this.mapInstance.fitBounds([[uLat, uLng], [mLat, mLng]], { padding: [50, 50] });
+
+                        this.navigationSteps = [
+                            { instruction: `Partida de: ${this.currentAddress}`, icon: 'fa-solid fa-play', distance: 'Início' },
+                            { instruction: `Siga em direção à região de ${activeMarket.branch}`, icon: 'fa-solid fa-arrow-up', distance: `${activeMarket.distance_km} km` },
+                            { instruction: `Acesse o endereço: ${activeMarket.address}`, icon: 'fa-solid fa-arrow-turn-down-right', distance: '500 m' },
+                            { instruction: `Chegada ao destino: ${activeMarket.brand} (${activeMarket.branch})`, icon: 'fa-solid fa-location-dot', distance: 'Destino' }
+                        ];
+                    } finally {
+                        this.isRouting = false;
+                    }
+                },
+
+                selectMarket(market) {
+                    this.selectedMarketId = market.market_id;
+                    this.selectedMarket = market;
+                    this.showToast(`📍 Rota traçada para ${market.brand} (${market.branch})! Distância: ${market.distance_km} km.`);
+                    this.drawMapRoute();
+                },
+
+                getGoogleMapsUrl(market) {
+                    const uLat = this.currentCoords?.lat || -23.5855;
+                    const uLng = this.currentCoords?.lng || -46.6784;
+                    const mLat = market?.lat || uLat;
+                    const mLng = market?.lng || uLng;
+                    return `https://www.google.com/maps/dir/?api=1&origin=${uLat},${uLng}&destination=${mLat},${mLng}&travelmode=driving`;
+                },
+
+                getWazeUrl(market) {
+                    const mLat = market?.lat || -23.5855;
+                    const mLng = market?.lng || -46.6784;
+                    return `https://waze.com/ul?ll=${mLat},${mLng}&navigate=yes`;
+                },
+
+                // ── CHECKOUT & PAGAMENTOS INTERATIVOS ──
+                openCheckoutModal(market = null) {
+                    const targetMarket = market || this.selectedMarket || (this.routingResult?.routes ? this.routingResult.routes[0] : null);
+                    if (!targetMarket) {
+                        this.showToast('⚠️ Selecione um mercado primeiro.');
+                        return;
+                    }
+                    this.checkoutMarket = targetMarket;
+                    this.selectedMarket = targetMarket;
+                    this.selectedMarketId = targetMarket.market_id;
+                    this.showCheckoutModal = true;
+                    this.startPixTimer();
+                },
+                closeCheckoutModal() {
+                    this.showCheckoutModal = false;
+                    if (this.pixTimerInterval) clearInterval(this.pixTimerInterval);
+                },
+                applyCoupon(code = null) {
+                    const c = (code || this.couponCode || '').trim().toUpperCase();
+                    if (!c) return;
+                    if (c === 'PRIMEIRACOMPRA') {
+                        this.appliedCoupon = { code: 'PRIMEIRACOMPRA', discountPct: 0.10 };
+                        this.showToast('✓ Cupom PRIMEIRACOMPRA aplicado: 10% OFF!');
+                    } else if (c === 'INVESTOR2026') {
+                        this.appliedCoupon = { code: 'INVESTOR2026', discountPct: 0.15 };
+                        this.showToast('✓ Cupom INVESTOR2026 aplicado: 15% OFF!');
+                    } else {
+                        this.showToast('⚠️ Cupom inválido. Tente PRIMEIRACOMPRA ou INVESTOR2026');
+                    }
+                },
+                removeCoupon() {
+                    this.appliedCoupon = null;
+                    this.couponCode = '';
+                    this.showToast('Cupom removido.');
+                },
+                copyPixCode() {
+                    if (navigator.clipboard) {
+                        navigator.clipboard.writeText(this.pixCodeString);
+                    }
+                    this.showToast('📋 Chave PIX Copia e Cola copiada com sucesso!');
+                },
+                startPixTimer() {
+                    if (this.pixTimerInterval) clearInterval(this.pixTimerInterval);
+                    this.pixTimerSeconds = 899;
+                    this.pixTimerInterval = setInterval(() => {
+                        if (this.pixTimerSeconds > 0) this.pixTimerSeconds--;
+                    }, 1000);
+                },
+                formatPixTimer() {
+                    const m = Math.floor(this.pixTimerSeconds / 60).toString().padStart(2, '0');
+                    const s = (this.pixTimerSeconds % 60).toString().padStart(2, '0');
+                    return `${m}:${s}`;
+                },
+                processPayment(isSimulatedPix = false) {
+                    this.isProcessingPayment = true;
+                    const finalTotal = this.checkoutFinalTotal;
+                    
+                    setTimeout(() => {
+                        this.isProcessingPayment = false;
+                        this.showCheckoutModal = false;
+                        this.showToast(`🎉 Pagamento de R$ ${finalTotal.toFixed(2).replace('.',',')} aprovado com sucesso!`);
+                        
+                        // Dispara o modal de entrega em tempo real
+                        this.orderDelivery(this.checkoutMarket);
+                    }, 1200);
+                },
+
+                // ── SIMULAÇÃO DE DELIVERY EXPRESSO & COMPRAS OTIMIZADAS ──
+                orderDelivery(market = null) {
+                    const targetMarket = market || this.selectedMarket || (this.routingResult?.routes ? this.routingResult.routes[0] : null);
+                    if (!targetMarket) {
+                        this.showToast('⚠️ Selecione um supermercado para solicitar a entrega.');
+                        return;
+                    }
+                    this.selectedMarket = targetMarket;
+                    this.selectedMarketId = targetMarket.market_id;
+
+                    const payload = {
+                        user_id: this.user?.id || 2,
+                        market_id: targetMarket.market_id,
+                        market_name: `${targetMarket.brand} (${targetMarket.branch})`,
+                        address: this.currentAddress || 'Rua Tabapuã, 1123 - Itaim Bibi, São Paulo - SP',
+                        total_price: targetMarket.total_price,
+                        items_count: targetMarket.items_found || this.cartItems.length || 9
+                    };
+
+                    fetch(`${API}/consumer/order/delivery`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    })
+                    .then(res => res.json())
+                    .then(data => {
+                        if (data.status === 'success') {
+                            this.deliveryOrder = data;
+                            this.deliveryStep = 1;
+                            this.showDeliveryModal = true;
+                            this.runDeliverySimulation();
+                        }
+                    })
+                    .catch(e => {
+                        console.error('Fallback delivery local:', e);
+                        this.deliveryOrder = {
+                            order_id: 'SD-' + Math.floor(10000 + Math.random() * 90000),
+                            market_name: `${targetMarket.brand} (${targetMarket.branch})`,
+                            estimated_minutes: 28,
+                            courier: { name: 'Carlos Eduardo', vehicle: 'Honda CG 160 Cargo (Eco)', plate: 'BRA-2E19', rating: 4.9 },
+                            delivery_address: this.currentAddress,
+                            items_count: targetMarket.items_found || 9,
+                            savings_reais: (targetMarket.total_price * 0.14).toFixed(2),
+                            total_paid: targetMarket.total_price
+                        };
+                        this.deliveryStep = 1;
+                        this.showDeliveryModal = true;
+                        this.runDeliverySimulation();
+                    });
+                },
+
+                runDeliverySimulation() {
+                    if (this.deliveryTimer) clearTimeout(this.deliveryTimer);
+                    this.deliveryStep = 1;
+
+                    setTimeout(() => {
+                        if (this.showDeliveryModal) this.deliveryStep = 2; // Separação
+                    }, 1400);
+
+                    setTimeout(() => {
+                        if (this.showDeliveryModal) {
+                            this.deliveryStep = 3; // A caminho
+                            this.showToast('🛵 Entregador a caminho com sua cesta da dieta!');
+                        }
+                    }, 3000);
+
+                    setTimeout(() => {
+                        if (this.showDeliveryModal) {
+                            this.deliveryStep = 4; // Entregue
+                            this.showToast('📦 Cesta entregue com sucesso no seu endereço!');
+                        }
+                    }, 4800);
+                },
+
+                closeDeliveryModal() {
+                    this.showDeliveryModal = false;
+                },
+
                 // ── CONSUMER ──
                 async loadConsumerData() {
                     await Promise.all([this.loadDiet(), this.loadProgress(), this.loadProfile()]);
+                    if (this.userProfile?.cep) {
+                        this.currentCep = this.userProfile.cep;
+                        await this.resolveLocationByCep(this.userProfile.cep, false);
+                    }
                 },
                 async loadProfile() {
                     try {
@@ -1313,9 +3267,27 @@
                                     weight_kg: data.profile.weight_kg,
                                     height_cm: data.profile.height_cm,
                                     goal: data.profile.goal,
+                                    cep: data.profile.cep,
                                     name: data.user?.name
                                 };
+                                if (data.profile.cep) {
+                                    this.currentCep = data.profile.cep;
+                                }
                             }
+                        }
+                    } catch (e) { console.error(e); }
+                },
+                async saveProfile() {
+                    try {
+                        const res = await fetch(`${API}/consumer/profile/update`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ user_id: this.user.id, cep: this.userProfile.cep })
+                        });
+                        if (res.ok) {
+                            this.currentCep = this.userProfile.cep;
+                            await this.resolveLocationByCep(this.userProfile.cep, false);
+                            this.showToast('✓ Perfil atualizado com sucesso!');
                         }
                     } catch (e) { console.error(e); }
                 },
@@ -1373,15 +3345,53 @@
                 async runAlgorithm() {
                     if (!this.cartItems.length) this.buildCart();
                     this.isMatching = true;
+                    this.matchingStep = '1/3: Localizando seu endereço de entrega...';
+                    
                     try {
                         const ids = this.cartItems.map(i => i.id);
+                        
+                        setTimeout(() => {
+                            if (this.isMatching) this.matchingStep = '2/3: Mapeando filiais e rotas de entrega para sua região...';
+                        }, 400);
+
+                        setTimeout(() => {
+                            if (this.isMatching) this.matchingStep = '3/3: Cotando estoques e traçando melhores caminhos...';
+                        }, 800);
+
+                        const payload = {
+                            product_ids: ids,
+                            cep: this.currentCep || this.userProfile?.cep,
+                            lat: this.currentCoords?.lat,
+                            lng: this.currentCoords?.lng,
+                            address: this.currentAddress
+                        };
+
                         const res = await fetch(`${API}/core/algorithm/match`, {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ product_ids: ids, lat: -23.585, lng: -46.678 })
+                            body: JSON.stringify(payload)
                         });
-                        this.routingResult = await res.json();
-                        setTimeout(() => { this.isMatching = false; this.tab = 'routes'; }, 1000);
+                        const data = await res.json();
+                        if (res.ok) {
+                            this.routingResult = data;
+                            if (data.user_location) {
+                                this.currentAddress = data.user_location.address;
+                                this.currentCep = data.user_location.cep;
+                                this.currentCoords = { lat: data.user_location.lat, lng: data.user_location.lng };
+                            }
+                            if (data.routes && data.routes.length > 0) {
+                                this.selectedMarketId = data.routes[0].market_id;
+                                this.selectedMarket = data.routes[0];
+                            }
+                        }
+                        setTimeout(() => {
+                            this.isMatching = false;
+                            this.tab = 'routes';
+                            this.showToast('✓ Cotação concluída e rota traçada!');
+                            this.$nextTick(() => {
+                                this.initOrUpdateMap();
+                            });
+                        }, 1000);
                     } catch (e) {
                         console.error(e);
                         this.isMatching = false;
@@ -1390,6 +3400,7 @@
 
                 // ── NUTRICIONISTA ──
                 async loadNutritionistData() {
+                    console.log('%c[SmartDiet Nutri Data]', 'background:#A78BFA;color:#000;font-weight:bold;padding:2px 8px;border-radius:4px;', 'Iniciando carregamento do painel clínico...');
                     await Promise.all([
                         this.loadPatients(),
                         this.loadTags(),
@@ -1397,87 +3408,118 @@
                         this.loadProtocols()
                     ]);
                     await this.loadPatientDiet(this.selectedPatientId);
+                    console.log('%c[SmartDiet Nutri Data OK]', 'background:#16C47F;color:#000;font-weight:bold;padding:2px 8px;border-radius:4px;', 'Dados clínicos sincronizados com sucesso!');
                 },
                 async loadPatients() {
                     try {
                         const res = await fetch(`${API}/nutritionist/patients`);
                         const data = await res.json();
-                        if (res.ok) this.patientsList = data.patients || [];
-                    } catch (e) { console.error(e); }
+                        if (res.ok) {
+                            this.patientsList = data.patients || [];
+                            console.log('[SmartDiet Nutri] Pacientes carregados:', this.patientsList.length, this.patientsList);
+                        }
+                    } catch (e) { console.error('[SmartDiet Nutri Error] loadPatients:', e); }
                 },
                 async loadTags() {
                     try {
                         const res = await fetch(`${API}/tags`);
                         const data = await res.json();
-                        if (res.ok) this.allTagsList = data.tags || [];
-                    } catch (e) { console.error(e); }
+                        if (res.ok) {
+                            this.allTagsList = data.tags || [];
+                            console.log('[SmartDiet Nutri] Tags de restrição:', this.allTagsList.length);
+                        }
+                    } catch (e) { console.error('[SmartDiet Nutri Error] loadTags:', e); }
                 },
                 async loadCatalog() {
                     try {
                         const res = await fetch(`${API}/products/search`);
                         const data = await res.json();
-                        if (res.ok) this.catalogProducts = data.data || [];
-                    } catch (e) { console.error(e); }
+                        if (res.ok) {
+                            this.catalogProducts = data.data || [];
+                            console.log('[SmartDiet Nutri] Catálogo clínico:', this.catalogProducts.length, 'alimentos');
+                        }
+                    } catch (e) { console.error('[SmartDiet Nutri Error] loadCatalog:', e); }
                 },
                 async loadProtocols() {
                     try {
                         const res = await fetch(`${API}/nutritionist/protocols`);
                         const data = await res.json();
-                        if (res.ok) this.clinicalProtocols = data.protocols || [];
-                    } catch (e) { console.error(e); }
+                        if (res.ok) {
+                            this.clinicalProtocols = data.protocols || [];
+                            console.log('[SmartDiet Nutri] Protocolos disponíveis:', this.clinicalProtocols.length);
+                        }
+                    } catch (e) { console.error('[SmartDiet Nutri Error] loadProtocols:', e); }
                 },
                 async loadPatientDiet(patientId) {
-                    this.selectedPatientId = patientId;
+                    const pid = parseInt(patientId) || 2;
+                    this.selectedPatientId = pid;
+                    console.log('[SmartDiet Nutri] Carregando dieta ativa do Paciente ID:', pid);
                     try {
-                        const res = await fetch(`${API}/consumer/diet?user_id=${patientId}`);
+                        const res = await fetch(`${API}/consumer/diet?user_id=${pid}`);
                         const data = await res.json();
-                        if (res.ok && data.diet_plan) {
+                        const pt = (this.patientsList || []).find(p => p.id === pid);
+                        if (res.ok && data.diet_plan && data.diet_items && data.diet_items.length > 0) {
                             this.currentDiet = {
-                                patient_id: patientId,
-                                title: data.diet_plan.title,
-                                goal: this.patientsList.find(p => p.id === patientId)?.goal || 'Hipertrofia Muscular',
-                                target_kcal: data.diet_plan.target_kcal,
-                                target_protein: data.diet_plan.target_protein,
-                                target_carbs: data.diet_plan.target_carbs,
-                                target_fat: data.diet_plan.target_fat,
+                                patient_id: pid,
+                                title: data.diet_plan.title || 'Plano Alimentar',
+                                goal: pt?.goal || 'Hipertrofia Muscular',
+                                target_kcal: parseInt(data.diet_plan.target_kcal) || 2150,
+                                target_protein: parseInt(data.diet_plan.target_protein) || 160,
+                                target_carbs: parseInt(data.diet_plan.target_carbs) || 220,
+                                target_fat: parseInt(data.diet_plan.target_fat) || 65,
                                 notes: data.diet_plan.notes || '',
-                                restriction_tag_ids: (data.restrictions || []).map(r => r.id),
+                                restriction_tag_ids: (data.restrictions || []).map(r => parseInt(r.id)),
                                 meals: (data.diet_items || []).map(i => ({
                                     meal_name: i.meal_name,
                                     meal_time: i.meal_time,
-                                    recommended_product_id: i.recommended_product_id,
-                                    qty_grams: i.qty_grams
+                                    recommended_product_id: parseInt(i.recommended_product_id) || 1,
+                                    qty_grams: parseInt(i.qty_grams) || 100
                                 }))
                             };
+                            console.log('[SmartDiet Nutri] Dieta ativa carregada no estúdio:', this.currentDiet.title, 'Refeições:', this.currentDiet.meals.length);
+                        } else {
+                            const goal = pt?.goal || 'Hipertrofia Muscular';
+                            const matchedProto = (this.clinicalProtocols || []).find(pr => pr.goal.toLowerCase().includes(goal.toLowerCase().split(' ')[0])) || this.clinicalProtocols[0];
+                            if (matchedProto) {
+                                this.applyProtocol(matchedProto);
+                            } else {
+                                await this.autoGenerateMeals();
+                            }
                         }
-                    } catch (e) { console.error(e); }
+                    } catch (e) {
+                        console.error('[SmartDiet Nutri Error] Erro ao carregar dieta do paciente:', e);
+                    }
                 },
                 onSelectPatient() {
                     this.loadPatientDiet(this.selectedPatientId);
                 },
                 loadPatientIntoStudio(patient) {
-                    this.selectedPatientId = patient.id;
-                    this.loadPatientDiet(patient.id);
+                    const pid = parseInt(patient.id) || 2;
+                    this.selectedPatientId = pid;
+                    this.loadPatientDiet(pid);
                     this.tab = 'nutri_prescription';
                 },
                 applyProtocol(proto) {
                     this.currentDiet.title = proto.name;
                     this.currentDiet.goal = proto.goal;
-                    this.currentDiet.target_kcal = proto.target_kcal;
-                    this.currentDiet.target_protein = proto.target_protein;
-                    this.currentDiet.target_carbs = proto.target_carbs;
-                    this.currentDiet.target_fat = proto.target_fat;
-                    this.currentDiet.notes = proto.notes;
-                    this.currentDiet.restriction_tag_ids = [...proto.recommended_tags];
-                    this.currentDiet.meals = proto.meals.map(m => ({
+                    this.currentDiet.target_kcal = parseInt(proto.target_kcal) || 2000;
+                    this.currentDiet.target_protein = parseInt(proto.target_protein) || 150;
+                    this.currentDiet.target_carbs = parseInt(proto.target_carbs) || 200;
+                    this.currentDiet.target_fat = parseInt(proto.target_fat) || 60;
+                    this.currentDiet.notes = proto.notes || '';
+                    this.currentDiet.restriction_tag_ids = [...(proto.recommended_tags || [])];
+                    this.currentDiet.meals = (proto.meals || []).map(m => ({
                         meal_name: m.meal_name,
                         meal_time: m.meal_time,
-                        recommended_product_id: m.product_id,
-                        qty_grams: m.qty_grams
+                        recommended_product_id: parseInt(m.product_id || m.recommended_product_id) || 1,
+                        qty_grams: parseInt(m.qty_grams) || 100
                     }));
                     this.showToast(`Protocolo "${proto.name}" carregado no estúdio!`);
                 },
                 toggleTagSelection(tagId) {
+                    if (!this.currentDiet.restriction_tag_ids) {
+                        this.currentDiet.restriction_tag_ids = [];
+                    }
                     const idx = this.currentDiet.restriction_tag_ids.indexOf(tagId);
                     if (idx > -1) {
                         this.currentDiet.restriction_tag_ids.splice(idx, 1);
@@ -1486,6 +3528,9 @@
                     }
                 },
                 addNewMeal() {
+                    if (!this.currentDiet.meals) {
+                        this.currentDiet.meals = [];
+                    }
                     const defaultProdId = this.catalogProducts[0]?.id || 1;
                     this.currentDiet.meals.push({
                         meal_name: 'Nova Refeição',
@@ -1496,6 +3541,92 @@
                 },
                 removeMeal(index) {
                     this.currentDiet.meals.splice(index, 1);
+                },
+                async autoGenerateMeals() {
+                    const target = parseInt(this.currentDiet.target_kcal) || 2150;
+                    const goal = this.currentDiet.goal || 'Hipertrofia Muscular';
+                    const restrictions = this.currentDiet.restriction_tag_ids || [];
+
+                    try {
+                        const res = await fetch(`${API}/nutritionist/generate_meals`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                patient_id: this.selectedPatientId,
+                                goal: goal,
+                                target_kcal: target,
+                                restriction_tag_ids: restrictions
+                            })
+                        });
+                        const data = await res.json();
+                        if (res.ok && data.meals?.length > 0) {
+                            this.currentDiet.meals = data.meals.map(m => ({
+                                meal_name: m.meal_name,
+                                meal_time: m.meal_time,
+                                recommended_product_id: parseInt(m.product_id || m.recommended_product_id) || 1,
+                                qty_grams: parseInt(m.qty_grams) || 100
+                            }));
+                            this.showToast(`✓ Plano inteligente gerado para ${goal} (${target} kcal)!`);
+                            return;
+                        }
+                    } catch (e) {
+                        console.warn('Fallback gerador local:', e);
+                    }
+
+                    // Fallback estruturado local por objetivo clínico
+                    const isHyper = goal.toLowerCase().includes('hipertrofia') || goal.toLowerCase().includes('bulking');
+                    const isVegan = goal.toLowerCase().includes('plant') || restrictions.includes(3);
+                    const isLowCarb = goal.toLowerCase().includes('low') || restrictions.includes(5);
+
+                    if (isHyper) {
+                        this.currentDiet.meals = [
+                            { meal_name: 'Café da Manhã (Ovos)',       meal_time: '07:30', recommended_product_id: 9,  qty_grams: 150 },
+                            { meal_name: 'Acompanhamento Café',        meal_time: '07:30', recommended_product_id: 5,  qty_grams: 70 },
+                            { meal_name: 'Shake Pós-Treino',           meal_time: '10:00', recommended_product_id: 1,  qty_grams: 40 },
+                            { meal_name: 'Almoço (Peito de Frango)',   meal_time: '13:00', recommended_product_id: 4,  qty_grams: 180 },
+                            { meal_name: 'Carboidrato Almoço',         meal_time: '13:00', recommended_product_id: 13, qty_grams: 220 },
+                            { meal_name: 'Lanche da Tarde',            meal_time: '16:30', recommended_product_id: 7,  qty_grams: 200 },
+                            { meal_name: 'Gorduras Boas Tarde',        meal_time: '16:30', recommended_product_id: 6,  qty_grams: 30 },
+                            { meal_name: 'Jantar (Salmão Fresco)',     meal_time: '20:00', recommended_product_id: 12, qty_grams: 160 },
+                            { meal_name: 'Carboidrato Jantar',         meal_time: '20:00', recommended_product_id: 8,  qty_grams: 250 },
+                        ];
+                    } else if (isLowCarb) {
+                        this.currentDiet.meals = [
+                            { meal_name: 'Café da Manhã (Ovos)',       meal_time: '08:00', recommended_product_id: 9,  qty_grams: 160 },
+                            { meal_name: 'Gorduras Café',              meal_time: '08:00', recommended_product_id: 6,  qty_grams: 30 },
+                            { meal_name: 'Almoço (Salmão Fresco)',     meal_time: '12:30', recommended_product_id: 12, qty_grams: 200 },
+                            { meal_name: 'Vegetais Almoço',            meal_time: '12:30', recommended_product_id: 10, qty_grams: 200 },
+                            { meal_name: 'Lanche (Whey Isolado)',      meal_time: '16:30', recommended_product_id: 1,  qty_grams: 35 },
+                            { meal_name: 'Mix Castanhas Tarde',        meal_time: '16:30', recommended_product_id: 14, qty_grams: 40 },
+                            { meal_name: 'Jantar (Peito de Frango)',   meal_time: '20:00', recommended_product_id: 4,  qty_grams: 180 },
+                            { meal_name: 'Gorduras Jantar',            meal_time: '20:00', recommended_product_id: 6,  qty_grams: 30 },
+                        ];
+                    } else if (isVegan) {
+                        this.currentDiet.meals = [
+                            { meal_name: 'Café (Leite de Amêndoas)',   meal_time: '07:30', recommended_product_id: 3,  qty_grams: 250 },
+                            { meal_name: 'Aveia S/ Glúten',            meal_time: '07:30', recommended_product_id: 5,  qty_grams: 75 },
+                            { meal_name: 'Almoço (Tofu Firme)',        meal_time: '12:30', recommended_product_id: 11, qty_grams: 220 },
+                            { meal_name: 'Carboidrato Almoço',         meal_time: '12:30', recommended_product_id: 13, qty_grams: 250 },
+                            { meal_name: 'Vegetais Almoço',            meal_time: '12:30', recommended_product_id: 10, qty_grams: 150 },
+                            { meal_name: 'Lanche da Tarde',            meal_time: '16:00', recommended_product_id: 6,  qty_grams: 30 },
+                            { meal_name: 'Castanhas Tarde',            meal_time: '16:00', recommended_product_id: 14, qty_grams: 30 },
+                            { meal_name: 'Jantar (Tofu Orgânico)',     meal_time: '19:30', recommended_product_id: 11, qty_grams: 180 },
+                            { meal_name: 'Carboidrato Jantar',         meal_time: '19:30', recommended_product_id: 8,  qty_grams: 240 },
+                        ];
+                    } else {
+                        this.currentDiet.meals = [
+                            { meal_name: 'Café da Manhã (Ovos)',       meal_time: '08:00', recommended_product_id: 9,  qty_grams: 100 },
+                            { meal_name: 'Acompanhamento Café',        meal_time: '08:00', recommended_product_id: 5,  qty_grams: 45 },
+                            { meal_name: 'Almoço (Peito de Frango)',   meal_time: '12:30', recommended_product_id: 4,  qty_grams: 160 },
+                            { meal_name: 'Carboidrato Almoço',         meal_time: '12:30', recommended_product_id: 13, qty_grams: 150 },
+                            { meal_name: 'Vegetais Almoço',            meal_time: '12:30', recommended_product_id: 10, qty_grams: 150 },
+                            { meal_name: 'Lanche da Tarde',            meal_time: '16:00', recommended_product_id: 7,  qty_grams: 180 },
+                            { meal_name: 'Castanhas Tarde',            meal_time: '16:00', recommended_product_id: 14, qty_grams: 20 },
+                            { meal_name: 'Jantar (Salmão)',            meal_time: '19:30', recommended_product_id: 12, qty_grams: 140 },
+                            { meal_name: 'Carboidrato Jantar',         meal_time: '19:30', recommended_product_id: 8,  qty_grams: 160 },
+                        ];
+                    }
+                    this.showToast(`✓ Plano inteligente gerado para ${goal} (${target} kcal)!`);
                 },
                 async savePrescription() {
                     try {
@@ -1567,7 +3698,22 @@
                     return map[c] || 'chip-green';
                 }
             }
-        }).mount('#app');
+        });
+
+        vueApp.config.errorHandler = (err, instance, info) => {
+            console.error('%c[SmartDiet Vue Error]', 'background:#EF4444;color:#fff;font-weight:bold;padding:4px;border-radius:4px;', err, info);
+        };
+
+        window.addEventListener('error', (event) => {
+            console.error('%c[SmartDiet Window Error]', 'background:#EF4444;color:#fff;font-weight:bold;padding:4px;border-radius:4px;', event.error || event.message);
+        });
+
+        window.addEventListener('unhandledrejection', (event) => {
+            console.error('%c[SmartDiet Promise Rejection]', 'background:#EF4444;color:#fff;font-weight:bold;padding:4px;border-radius:4px;', event.reason);
+        });
+
+        vueApp.mount('#app');
+        console.log('%c[SmartDiet Ready]', 'background:#16C47F;color:#000;font-weight:bold;padding:3px 10px;border-radius:4px;', 'Interface montada e pronta para uso!');
 
         const loader = document.getElementById('boot-loader');
         if (loader) {
